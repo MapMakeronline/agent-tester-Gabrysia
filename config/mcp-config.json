@@ -1,0 +1,27 @@
+{
+  "mcpServers": {
+    "playwright": {
+      "command": "npx",
+      "args": ["@playwright/mcp@latest", "--cdp-endpoint", "http://localhost:9222"]
+    },
+    "google-sheets": {
+      "command": "npx",
+      "args": ["-y", "mcp-gsheets"],
+      "env": {
+        "GOOGLE_APPLICATION_CREDENTIALS": "C:\\Users\\Dom\\.claude\\agents\\tester\\config\\sheets-service-account.json"
+      }
+    },
+    "vitest": {
+      "command": "npx",
+      "args": ["-y", "@djankies/vitest-mcp"]
+    },
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp"]
+    },
+    "typescript": {
+      "command": "npx",
+      "args": ["-y", "typescript-mcp"]
+    }
+  }
+}

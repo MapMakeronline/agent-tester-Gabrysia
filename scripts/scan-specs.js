@@ -11,7 +11,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const MUIFRONTEND = path.resolve(__dirname, '..', '..', '..', '..', 'MUIFrontend');
+const MUIFRONTEND = process.env.MUIFRONTEND || path.resolve(__dirname, '..', '..', '..', '..', 'MUIFrontend');
 
 function extractTcIdsFromSpecs() {
     const e2eDir = path.join(MUIFRONTEND, 'e2e');

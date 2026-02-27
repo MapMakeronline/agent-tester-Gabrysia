@@ -14,7 +14,7 @@ const fs = require('fs');
 const path = require('path');
 const https = require('https');
 
-const MUIFRONTEND = path.resolve(__dirname, '..', '..', '..', '..', 'MUIFrontend');
+const MUIFRONTEND = process.env.MUIFRONTEND || path.resolve(__dirname, '..', '..', '..', '..', 'MUIFrontend');
 const SHEET_CONFIG = path.resolve(__dirname, '..', 'config', 'sheet-config.json');
 
 // ==================== CSV HELPERS ====================

@@ -1,0 +1,33 @@
+{
+  "_comment": "Skopiuj ten plik jako .mcp.json do katalogu projektu (MUIFrontend/) i do katalogu roboczego Claude Code. Zmień ścieżki jeśli username != Dom.",
+  "mcpServers": {
+    "playwright": {
+      "command": "npx",
+      "args": ["@playwright/mcp@latest", "--cdp-endpoint", "http://localhost:9222"],
+      "_info": "Wymaga Chrome z --remote-debugging-port=9222"
+    },
+    "google-sheets": {
+      "command": "npx",
+      "args": ["-y", "mcp-gsheets"],
+      "env": {
+        "GOOGLE_APPLICATION_CREDENTIALS": "SCIEZKA_DO\\sheets-service-account.json"
+      },
+      "_info": "Wymaga pliku service account JSON z Google Cloud Console"
+    },
+    "vitest": {
+      "command": "npx",
+      "args": ["-y", "@djankies/vitest-mcp"],
+      "_info": "Opcjonalny - testy jednostkowe"
+    },
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp"],
+      "_info": "Opcjonalny - dokumentacja bibliotek"
+    },
+    "typescript": {
+      "command": "npx",
+      "args": ["-y", "typescript-mcp"],
+      "_info": "Opcjonalny - analiza kodu TS"
+    }
+  }
+}

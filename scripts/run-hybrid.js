@@ -23,7 +23,7 @@ const { execSync, spawn } = require('child_process');
 // ==================== PATHS ====================
 
 const AGENT_ROOT = path.resolve(__dirname, '..');
-const MUIFRONTEND = path.resolve(__dirname, '..', '..', '..', '..', 'MUIFrontend');
+const MUIFRONTEND = process.env.MUIFRONTEND || path.resolve(__dirname, '..', '..', '..', '..', 'MUIFrontend');
 const SHEET_CONFIG = path.join(AGENT_ROOT, 'config', 'sheet-config.json');
 const WEBHOOK_CONFIG = path.join(AGENT_ROOT, 'config', 'webhook-config.json');
 const TESTS_DATA = path.join(AGENT_ROOT, 'monitor', 'tests-data.js');

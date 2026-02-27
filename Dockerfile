@@ -11,11 +11,9 @@ COPY MUIFrontend/playwright.config.ts ./
 COPY MUIFrontend/e2e/ ./e2e/
 COPY MUIFrontend/tsconfig.json ./
 
-# 2. Tester: skrypty, config, monitor
+# 2. Tester: skrypty, config, monitor, data
 COPY tester/scripts/ ./scripts/
-COPY tester/config/sheet-config.json ./config/sheet-config.json
-COPY tester/config/sheets-service-account.json ./config/sheets-service-account.json
-COPY tester/config/webhook-config.json ./config/webhook-config.json
+COPY tester/config/ ./config/
 COPY tester/monitor/ ./monitor/
 COPY tester/data/ ./data/
 
@@ -23,6 +21,9 @@ COPY tester/data/ ./data/
 COPY tester/package.json ./tester-package.json
 RUN cd /tmp && cp /app/tester-package.json package.json && npm install && cp -r node_modules/playwright /app/node_modules/ 2>/dev/null || true
 
+# 4. Env vars
+# MUIFRONTEND=/app bo e2e/ i playwright.config.ts sa w /app/
+ENV MUIFRONTEND=/app
 ENV HEADLESS=1
 ENV NODE_ENV=production
 EXPOSE 8081

@@ -18,7 +18,7 @@ const AGENT_ROOT = path.resolve(__dirname, '..');
 const DATA_DIR = path.join(AGENT_ROOT, 'data');
 const CONFIG_DIR = path.join(AGENT_ROOT, 'config');
 const MONITOR_DIR = path.join(AGENT_ROOT, 'monitor');
-const MUIFRONTEND = path.resolve(AGENT_ROOT, '..', '..', '..', 'MUIFrontend');
+const MUIFRONTEND = process.env.MUIFRONTEND || path.resolve(AGENT_ROOT, '..', '..', '..', 'MUIFrontend');
 
 const SHEET_CONFIG_PATH = path.join(CONFIG_DIR, 'sheet-config.json');
 const STOP_SIGNAL_PATH = path.join(MONITOR_DIR, 'stop-signal.txt');

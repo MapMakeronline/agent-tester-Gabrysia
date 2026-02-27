@@ -19,7 +19,7 @@ const path = require('path');
 const readline = require('readline');
 
 const BASE_DIR = path.resolve(__dirname, '..');
-const MUIFRONTEND = path.resolve(__dirname, '..', '..', '..', '..', 'MUIFrontend');
+const MUIFRONTEND = process.env.MUIFRONTEND || path.resolve(__dirname, '..', '..', '..', '..', 'MUIFrontend');
 const PROCEDURES_DIR = path.join(MUIFRONTEND, 'e2e', 'learned-procedures');
 const QUEUE_PATH = path.join(BASE_DIR, 'data', 'tests-queue.json');
 
