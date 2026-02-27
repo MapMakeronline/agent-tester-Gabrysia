@@ -1,19 +1,42 @@
 import { test as base, chromium } from '@playwright/test';
+import * as path from 'path';
+import * as fs from 'fs';
 
+const IS_HEADLESS = process.env.HEADLESS === '1';
 const CDP_URL = process.env.CDP_URL || 'http://127.0.0.1:9222';
+const STORAGE_STATE_PATH = path.resolve(__dirname, '..', 'data', 'auth-storage-state.json');
 
 export const test = base.extend({
   browser: [async ({}, use) => {
-    const browser = await chromium.connectOverCDP(CDP_URL, { isLocal: true });
+    let browser;
+    if (IS_HEADLESS) {
+      // Server mode: launch Chromium directly (no CDP)
+      browser = await chromium.launch({ headless: true });
+    } else {
+      // Local mode: connect to user's Chrome via CDP
+      browser = await chromium.connectOverCDP(CDP_URL, { isLocal: true });
+    }
     await use(browser);
+    if (IS_HEADLESS) {
+      await browser.close();
+    }
   }, { scope: 'worker' }],
 
   context: async ({ browser }, use) => {
-    // Use the existing default context from CDP Chrome (preserves logged-in session)
-    const contexts = browser.contexts();
-    const context = contexts[0] || await browser.newContext();
+    let context;
+    if (IS_HEADLESS) {
+      // Server mode: create new context with saved auth state (if available)
+      const storageState = fs.existsSync(STORAGE_STATE_PATH) ? STORAGE_STATE_PATH : undefined;
+      context = await browser.newContext({ storageState });
+    } else {
+      // Local mode: reuse existing CDP context (preserves logged-in session)
+      const contexts = browser.contexts();
+      context = contexts[0] || await browser.newContext();
+    }
     await use(context);
-    // Don't close the default context — it belongs to the Chrome session
+    if (IS_HEADLESS) {
+      await context.close();
+    }
   },
 
   page: async ({ context, baseURL }, use) => {

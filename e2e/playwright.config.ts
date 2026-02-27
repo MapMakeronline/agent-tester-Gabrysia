@@ -1,7 +1,13 @@
 import { defineConfig, devices } from '@playwright/test';
+import * as path from 'path';
+import * as fs from 'fs';
 
 const BASE_URL = process.env.BASE_URL || 'https://universe-mapmaker.web.app';
-const CDP_ENDPOINT = process.env.CDP_ENDPOINT || '';
+const IS_HEADLESS = process.env.HEADLESS === '1';
+const STORAGE_STATE_PATH = path.resolve(__dirname, 'data', 'auth-storage-state.json');
+
+// In headless/server mode, use storageState from global-setup login (if available)
+const storageState = IS_HEADLESS && fs.existsSync(STORAGE_STATE_PATH) ? STORAGE_STATE_PATH : undefined;
 
 export default defineConfig({
   globalSetup: require.resolve('./e2e/global-setup'),
@@ -20,7 +26,7 @@ export default defineConfig({
     video: 'retain-on-failure',
     actionTimeout: 15_000,
     navigationTimeout: 30_000,
-    ...(CDP_ENDPOINT ? { connectOptions: { wsEndpoint: CDP_ENDPOINT } } : {}),
+    storageState,
   },
   projects: [
     {

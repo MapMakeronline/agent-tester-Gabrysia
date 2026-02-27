@@ -31,6 +31,29 @@ spec:
             secretKeyRef:
               name: e2e-tester-secrets
               key: api-key
+        - name: MAPMAKER_USER
+          valueFrom:
+            secretKeyRef:
+              name: e2e-tester-secrets
+              key: mapmaker-user
+              optional: true
+        - name: MAPMAKER_PASS
+          valueFrom:
+            secretKeyRef:
+              name: e2e-tester-secrets
+              key: mapmaker-pass
+              optional: true
+        volumeMounts:
+        - name: dshm
+          mountPath: /dev/shm
+        - name: sheets-sa
+          mountPath: /app/config/sheets-service-account.json
+          subPath: sheets-service-account.json
+          readOnly: true
+        - name: sheet-config
+          mountPath: /app/config/sheet-config.json
+          subPath: sheet-config.json
+          readOnly: true
         resources:
           requests:
             cpu: "200m"
@@ -50,6 +73,25 @@ spec:
             port: 8081
           initialDelaySeconds: 5
           periodSeconds: 10
+      volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 1Gi
+      - name: sheets-sa
+        secret:
+          secretName: e2e-tester-secrets
+          items:
+          - key: sheets-sa
+            path: sheets-service-account.json
+          optional: true
+      - name: sheet-config
+        configMap:
+          name: e2e-tester-config
+          items:
+          - key: sheet-config.json
+            path: sheet-config.json
+          optional: true
 ---
 apiVersion: v1
 kind: Service

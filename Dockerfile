@@ -18,12 +18,13 @@ COPY monitor/index.html monitor/favicon.svg ./monitor/
 COPY lib/ ./lib/
 
 # 4. Pliki runtime (puste lub domyslne)
-RUN mkdir -p data config \
+RUN mkdir -p data config monitor \
     && echo '{}' > config/sheet-config.json \
     && echo '{}' > config/webhook-config.json \
     && echo '{}' > config/sheets-service-account.json \
     && echo '{}' > data/remaining-tests.json \
-    && echo '{}' > data/session-state.json
+    && echo '{}' > data/session-state.json \
+    && echo '// empty' > monitor/tests-data.js
 
 # 5. Env vars
 # MUIFRONTEND=/app bo e2e/ i playwright.config.ts sa w /app/
