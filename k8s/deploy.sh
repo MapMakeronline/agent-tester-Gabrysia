@@ -1,15 +1,20 @@
 #!/bin/bash
 # Deploy E2E Tester na GKE
 #
+# Repo: github.com/gabriela-j/tester-agent (self-contained)
+# Build: Cloud Build (gcloud builds submit) - nie wymaga lokalnego Dockera
+#
 # Wymagania:
 #   - gcloud auth login
+#   - gcloud config set project universe-mapmaker
 #   - kubectl skonfigurowany na klaster GKE
-#   - Docker
 #
 # Użycie:
-#   ./deploy.sh          # build + push + deploy
-#   ./deploy.sh --build  # tylko build + push
-#   ./deploy.sh --apply  # tylko apply manifesty
+#   ./deploy.sh                    # build (Cloud Build) + deploy
+#   ./deploy.sh --build            # tylko build + push do GCR
+#   ./deploy.sh --apply            # tylko apply manifesty K8s
+#   ./deploy.sh --local            # build lokalnym Dockerem (wymaga Docker Desktop)
+#   ./deploy.sh --secrets          # kopiuj secrets do kontekstu przed buildem
 
 set -e
 
@@ -18,50 +23,68 @@ IMAGE="gcr.io/${PROJECT}/e2e-tester"
 TAG=$(date +%Y%m%d-%H%M%S)
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-TESTER_DIR="$(dirname "$SCRIPT_DIR")"
+REPO_DIR="$(dirname "$SCRIPT_DIR")"
 
-# Przygotuj kontekst budowania
-BUILD_DIR=$(mktemp -d)
-trap "rm -rf $BUILD_DIR" EXIT
+echo "=== E2E Tester Deploy ==="
+echo "Image: ${IMAGE}:${TAG}"
+echo "Repo:  ${REPO_DIR}"
+echo ""
 
-echo "=== Przygotowuję kontekst budowania ==="
+# ========== SECRETS ==========
+# Kopiuj prawdziwe secrets do config/ (gitignored) przed buildem
+if [[ "$1" == "--secrets" || "$2" == "--secrets" ]]; then
+    echo "=== Kopiuj secrets ==="
+    SECRETS_SRC="${HOME}/.claude/agents/tester/config"
+    for f in sheets-service-account.json sheet-config.json webhook-config.json credentials.js; do
+        if [[ -f "$SECRETS_SRC/$f" ]]; then
+            cp "$SECRETS_SRC/$f" "$REPO_DIR/config/$f"
+            echo "  Skopiowano: $f"
+        fi
+    done
+    echo ""
+fi
 
-# Kopiuj MUIFrontend (tylko to co potrzebne)
-mkdir -p "$BUILD_DIR/MUIFrontend/e2e"
-cp "$HOME/MUIFrontend/package.json" "$BUILD_DIR/MUIFrontend/"
-cp "$HOME/MUIFrontend/package-lock.json" "$BUILD_DIR/MUIFrontend/" 2>/dev/null || true
-cp "$HOME/MUIFrontend/playwright.config.ts" "$BUILD_DIR/MUIFrontend/"
-cp "$HOME/MUIFrontend/tsconfig.json" "$BUILD_DIR/MUIFrontend/" 2>/dev/null || true
-cp -r "$HOME/MUIFrontend/e2e/" "$BUILD_DIR/MUIFrontend/e2e/"
-
-# Kopiuj tester
-mkdir -p "$BUILD_DIR/tester"
-cp -r "$TESTER_DIR/scripts" "$BUILD_DIR/tester/"
-cp -r "$TESTER_DIR/config" "$BUILD_DIR/tester/"
-cp -r "$TESTER_DIR/monitor" "$BUILD_DIR/tester/"
-cp -r "$TESTER_DIR/data" "$BUILD_DIR/tester/" 2>/dev/null || true
-cp "$TESTER_DIR/package.json" "$BUILD_DIR/tester/"
-cp "$TESTER_DIR/Dockerfile" "$BUILD_DIR/Dockerfile"
-
-# Usuń wrażliwe pliki jeśli nie istnieją
-touch "$BUILD_DIR/tester/config/sheets-service-account.json" 2>/dev/null || true
-touch "$BUILD_DIR/tester/config/webhook-config.json" 2>/dev/null || true
-
+# ========== BUILD ==========
 if [[ "$1" != "--apply" ]]; then
-    echo "=== Build Docker image ==="
-    cd "$BUILD_DIR"
-    docker build -t "${IMAGE}:${TAG}" -t "${IMAGE}:latest" .
 
-    echo "=== Push to GCR ==="
-    docker push "${IMAGE}:${TAG}"
-    docker push "${IMAGE}:latest"
+    if [[ "$1" == "--local" ]]; then
+        # Build lokalnym Dockerem
+        echo "=== Build Docker (local) ==="
+        cd "$REPO_DIR"
+        docker build -t "${IMAGE}:${TAG}" -t "${IMAGE}:latest" .
+
+        echo "=== Push to GCR ==="
+        docker push "${IMAGE}:${TAG}"
+        docker push "${IMAGE}:latest"
+    else
+        # Build przez Cloud Build (nie wymaga lokalnego Dockera)
+        echo "=== Build Docker (Cloud Build) ==="
+        cd "$REPO_DIR"
+        gcloud builds submit \
+            --tag "${IMAGE}:${TAG}" \
+            --project "${PROJECT}" \
+            --timeout=600s \
+            --machine-type=e2-highcpu-8
+
+        # Tag as latest
+        echo "=== Tag as latest ==="
+        gcloud container images add-tag \
+            "${IMAGE}:${TAG}" \
+            "${IMAGE}:latest" \
+            --quiet
+    fi
+
     echo "Image: ${IMAGE}:${TAG}"
 fi
 
+# ========== DEPLOY ==========
 if [[ "$1" != "--build" ]]; then
     echo "=== Apply K8s manifests ==="
     kubectl apply -f "$SCRIPT_DIR/secret.yaml"
     kubectl apply -f "$SCRIPT_DIR/deployment.yaml"
+
+    # Ustaw nowy image tag (nie tylko latest)
+    kubectl set image deployment/e2e-tester tester="${IMAGE}:${TAG}" 2>/dev/null || true
 
     echo "=== Restart deployment ==="
     kubectl rollout restart deployment/e2e-tester

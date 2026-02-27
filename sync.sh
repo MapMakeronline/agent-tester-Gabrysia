@@ -83,7 +83,7 @@ fi
 if [ "$GCS_ONLY" = true ]; then
     echo "[GCS] Syncing to $GCS_BUCKET ..."
     gcloud storage rsync -r \
-        --exclude='\.git/|node_modules/|^data/' \
+        --exclude='.*\.git.*|.*node_modules.*|.*\/data\/.*' \
         "$AGENT_DIR" "$GCS_BUCKET" 2>&1 | tail -5
     echo "  GCS sync done!"
     exit 0
@@ -165,7 +165,7 @@ else
     echo ""
     echo "[5/5] Syncing to GCS..."
     gcloud storage rsync -r \
-        --exclude='\.git/|node_modules/|^data/' \
+        --exclude='.*\.git.*|.*node_modules.*|.*\/data\/.*' \
         "$AGENT_DIR" "$GCS_BUCKET" 2>&1 | tail -5
     echo "  GCS synced: $GCS_BUCKET"
 fi
