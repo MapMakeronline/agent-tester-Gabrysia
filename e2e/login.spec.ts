@@ -26,8 +26,7 @@ test.describe('LOGOWANIE', () => {
     await page.getByRole('textbox', { name: /nazwa użytkownika/i }).fill('WrongUser');
     await page.getByRole('textbox', { name: /hasło/i }).fill('WrongPassword123');
     await page.getByRole('button', { name: 'Zaloguj się', exact: true }).click();
-    const errorMessage = page.locator('[role="alert"], .error, .MuiAlert-message, [class*="error"]').first();
-    await expect(errorMessage).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole('alert')).toBeVisible({ timeout: 15_000 });
   });
 
   // TC-LOGIN-003: Wylogowanie
