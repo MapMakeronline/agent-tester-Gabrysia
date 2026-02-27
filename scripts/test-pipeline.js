@@ -36,7 +36,7 @@ const CONFIG_DIR = path.join(AGENT_ROOT, 'config');
 const DATA_DIR = path.join(AGENT_ROOT, 'data');
 const MONITOR_DIR = path.join(AGENT_ROOT, 'monitor');
 
-const MUIFRONTEND = path.resolve(AGENT_ROOT, '..', '..', '..', 'MUIFrontend');
+const MUIFRONTEND = process.env.MUIFRONTEND || path.resolve(AGENT_ROOT, '..', '..', '..', 'MUIFrontend');
 
 const SHEET_CONFIG_PATH = path.join(CONFIG_DIR, 'sheet-config.json');
 const QUEUE_PATH = path.join(DATA_DIR, 'tests-queue.json');

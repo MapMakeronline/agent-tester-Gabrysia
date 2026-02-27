@@ -1,16 +1,19 @@
 #!/bin/bash
 # =============================================================================
-#  SYNC & PUSH - Synchronizuj lokalne zmiany z GitHub
+#  SYNC & PUSH - Synchronizuj lokalne zmiany z GitHub + GCS
 #
 #  Użycie:
-#    bash sync.sh                    # Sync wszystko + push
-#    bash sync.sh --no-push          # Tylko sync (bez push)
+#    bash sync.sh                    # Sync wszystko: e2e + GitHub + GCS
+#    bash sync.sh --no-push          # Tylko sync e2e + commit (bez push/GCS)
+#    bash sync.sh --no-gcs           # Sync e2e + GitHub (bez GCS)
+#    bash sync.sh --gcs-only         # Tylko sync do GCS (bez git)
 #    bash sync.sh --e2e-only         # Tylko sync e2e z MUIFrontend
 #    bash sync.sh -m "opis zmian"    # Custom commit message
 #
 #  Co robi:
 #    1. Kopiuje e2e/ z MUIFrontend (specs, helpers, learned-procedures)
 #    2. git add + commit + push na origin/main
+#    3. gcloud storage rsync do GCS (backup)
 # =============================================================================
 
 set -e
@@ -19,22 +22,27 @@ AGENT_DIR="$(cd "$(dirname "$0")" && pwd)"
 MUIFRONTEND="$HOME/MUIFrontend"
 E2E_SRC="$MUIFRONTEND/e2e"
 E2E_DST="$AGENT_DIR/e2e"
+GCS_BUCKET="gs://mapmaker-team-docs/claude-md/Gabrysia-md/tester-agent-config"
 
 # Parse args
 NO_PUSH=false
+NO_GCS=false
+GCS_ONLY=false
 E2E_ONLY=false
 CUSTOM_MSG=""
 
 for arg in "$@"; do
     case $arg in
         --no-push)   NO_PUSH=true ;;
+        --no-gcs)    NO_GCS=true ;;
+        --gcs-only)  GCS_ONLY=true ;;
         --e2e-only)  E2E_ONLY=true ;;
         -m)          shift; CUSTOM_MSG="$1" ;;
     esac
 done
 
 echo "============================================"
-echo "  SYNC: tester-agent -> GitHub"
+echo "  SYNC: tester-agent -> GitHub + GCS"
 echo "============================================"
 echo ""
 
@@ -67,7 +75,17 @@ fi
 
 if [ "$E2E_ONLY" = true ]; then
     echo ""
-    echo "  --e2e-only: pomijam commit/push"
+    echo "  --e2e-only: pomijam commit/push/gcs"
+    exit 0
+fi
+
+# --- GCS ONLY shortcut ---
+if [ "$GCS_ONLY" = true ]; then
+    echo "[GCS] Syncing to $GCS_BUCKET ..."
+    gcloud storage rsync -r \
+        --exclude='.git/|node_modules/|data/' \
+        "$AGENT_DIR" "$GCS_BUCKET" 2>&1 | tail -5
+    echo "  GCS sync done!"
     exit 0
 fi
 
@@ -137,6 +155,19 @@ else
     echo "[4/4] Pushing to origin/main..."
     git push origin main 2>&1
     echo "  Pushed!"
+fi
+
+# --- KROK 5: GCS sync ---
+if [ "$NO_GCS" = true ] || [ "$NO_PUSH" = true ]; then
+    echo ""
+    echo "[5/5] GCS sync pominieto (--no-gcs lub --no-push)"
+else
+    echo ""
+    echo "[5/5] Syncing to GCS..."
+    gcloud storage rsync -r \
+        --exclude='.git/|node_modules/|data/' \
+        "$AGENT_DIR" "$GCS_BUCKET" 2>&1 | tail -5
+    echo "  GCS synced: $GCS_BUCKET"
 fi
 
 echo ""
