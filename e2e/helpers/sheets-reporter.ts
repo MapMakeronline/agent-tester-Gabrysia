@@ -8,7 +8,7 @@ import type {
 } from '@playwright/test/reporter';
 import * as fs from 'fs';
 import * as path from 'path';
-import * as https from 'https';
+import { batchUpdateSheetResults, type SheetTestResult } from './sheets-api';
 
 interface TestEntry {
   code: string;
@@ -23,15 +23,6 @@ interface TestEntry {
   source: 'playwright-coded';
   duration: number;
   allSteps?: string[];
-}
-
-interface WebhookResult {
-  code: string;
-  status: string;
-  resultText: string;
-  finishedAt: string;
-  finishedAtDisplay: string;
-  source: 'playwright-coded';
 }
 
 const TC_ID_REGEX = /^(TC-\w+-\d+)/;
@@ -55,17 +46,7 @@ const STOP_SIGNAL_PATH = path.join(AGENT_ROOT, 'monitor', 'stop-signal.txt');
 
 const QUEUE_PATH = path.join(AGENT_ROOT, 'data', 'tests-queue.json');
 
-const WEBHOOK_CONFIG_PATH = path.resolve(
-  __dirname,
-  '..',
-  '..',
-  '..',
-  '.claude',
-  'agents',
-  'tester',
-  'config',
-  'webhook-config.json',
-);
+// webhook-config.json deprecated - using Sheets API v4 directly via sheets-api.ts
 
 function formatDateTime(d: Date): string {
   return d.toISOString().slice(0, 19);
@@ -97,105 +78,6 @@ function mapStatus(result: TestResult, testCase: TestCase): string {
     default:
       return 'failed';
   }
-}
-
-/** Send a single GET request to Google Apps Script (follows redirects). */
-function appsScriptGet(fullUrl: string): Promise<{ success: boolean; data?: string }> {
-  return new Promise((resolve) => {
-    function doGet(getUrl: string, redirectsLeft: number) {
-      const parsedUrl = new URL(getUrl);
-      const req = https.request({
-        hostname: parsedUrl.hostname,
-        path: parsedUrl.pathname + parsedUrl.search,
-        method: 'GET',
-        headers: { 'Accept': 'application/json' },
-      }, (res) => {
-        if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-          if (redirectsLeft <= 0) { resolve({ success: false }); return; }
-          res.resume();
-          doGet(res.headers.location, redirectsLeft - 1);
-          return;
-        }
-        let data = '';
-        res.on('data', (chunk: string) => (data += chunk));
-        res.on('end', () => {
-          try {
-            const response = JSON.parse(data);
-            resolve({ success: !!response.success, data });
-          } catch {
-            resolve({ success: res.statusCode === 200, data });
-          }
-        });
-      });
-      req.on('error', () => resolve({ success: false }));
-      req.setTimeout(15000, () => { req.destroy(); resolve({ success: false }); });
-      req.end();
-    }
-    doGet(fullUrl, 3);
-  });
-}
-
-/** Update one cell via Apps Script: action=updateTest&row=N&column=X&value=Y */
-function updateCell(baseUrl: string, row: number, column: string, value: string): Promise<boolean> {
-  const params = new URLSearchParams({ action: 'updateTest', row: String(row), column, value });
-  return appsScriptGet(`${baseUrl}?${params.toString()}`).then((r) => r.success);
-}
-
-/**
- * Send test results to Google Sheets.
- * Uses the same updateTest API as save-test-result.js:
- *   Column G = status, Column H = result text, Column I = date/time
- */
-async function sendWebhookResults(webhookUrl: string, results: WebhookResult[], rowMap: Record<string, number>): Promise<boolean> {
-  let successCount = 0;
-  for (const result of results) {
-    const row = rowMap[result.code];
-    if (!row) {
-      console.log(`[sheets-reporter] No row mapping for ${result.code} - skipping`);
-      continue;
-    }
-    const prefix = `[Coded] `;
-    const okG = await updateCell(webhookUrl, row, 'G', result.status);
-    const okH = await updateCell(webhookUrl, row, 'H', prefix + result.resultText);
-    const okI = await updateCell(webhookUrl, row, 'I', result.finishedAtDisplay);
-    if (okG && okH && okI) successCount++;
-    else console.log(`[sheets-reporter] Partial update for ${result.code} (G:${okG} H:${okH} I:${okI})`);
-  }
-  if (successCount > 0) {
-    console.log(`[sheets-reporter] Updated ${successCount}/${results.length} results in Google Sheet`);
-  }
-  return successCount > 0;
-}
-
-const MAX_WEBHOOK_RETRIES = 3;
-
-async function sendToWebhook(results: WebhookResult[], rowMap: Record<string, number>): Promise<boolean> {
-  let webhookConfig: { enabled: boolean; webhookUrl: string };
-  try {
-    webhookConfig = JSON.parse(fs.readFileSync(WEBHOOK_CONFIG_PATH, 'utf8'));
-  } catch {
-    console.log('[sheets-reporter] No webhook config found - skipping sheet update');
-    return false;
-  }
-
-  if (!webhookConfig.enabled || !webhookConfig.webhookUrl) {
-    console.log('[sheets-reporter] Webhook disabled - skipping sheet update');
-    return false;
-  }
-
-  for (let attempt = 1; attempt <= MAX_WEBHOOK_RETRIES; attempt++) {
-    const ok = await sendWebhookResults(webhookConfig.webhookUrl, results, rowMap);
-    if (ok) return true;
-
-    if (attempt < MAX_WEBHOOK_RETRIES) {
-      const delayMs = 2000 * attempt; // 2s, 4s backoff
-      console.log(`[sheets-reporter] Webhook retry ${attempt}/${MAX_WEBHOOK_RETRIES} in ${delayMs}ms...`);
-      await new Promise((r) => setTimeout(r, delayMs));
-    }
-  }
-
-  console.log(`[sheets-reporter] Webhook failed after ${MAX_WEBHOOK_RETRIES} attempts`);
-  return false;
 }
 
 class SheetsReporter implements Reporter {
@@ -440,17 +322,16 @@ class SheetsReporter implements Reporter {
       console.log(`[sheets-reporter] Failed to write tests-data.js: ${msg}`);
     }
 
-    // 2. Send results to Google Sheet via webhook
+    // 3. Send results to Google Sheet via Sheets API v4
     if (this.tests.length > 0) {
-      const webhookResults: WebhookResult[] = this.tests.map((t) => ({
+      const sheetResults: SheetTestResult[] = this.tests.map((t) => ({
         code: t.code,
         status: t.status.toUpperCase(),
         resultText: t.resultText,
-        finishedAt: t.finishedAt,
         finishedAtDisplay: t.finishedAtDisplay,
         source: 'playwright-coded' as const,
       }));
-      await sendToWebhook(webhookResults, this.rowMap);
+      await batchUpdateSheetResults(sheetResults, this.rowMap);
     }
   }
 }

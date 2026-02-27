@@ -1,118 +1,52 @@
 /**
  * Google Sheets API dla Agent Tester
  *
- * Łączy się z arkuszem Google przez Apps Script Web App
+ * Uses Sheets API v4 via service account (lib/sheets-writer.js).
  *
- * Użycie:
+ * Uzycie:
  *   node google-sheets-api.js getTests
  *   node google-sheets-api.js getTests --category=LOGOWANIE
- *   node google-sheets-api.js getStats
- *   node google-sheets-api.js updateTest --row=5 --column="Completed At" --value="2026-02-05"
+ *   node google-sheets-api.js updateTest --row=5 --column=G --value="PASSED"
  *   node google-sheets-api.js addResult --row=5 --status=PASSED --notes="Test zaliczony"
+ *   node google-sheets-api.js readRange --range="Arkusz1!A1:I10"
  */
 
-const https = require('https');
-const url = require('url');
-
-// URL do Google Apps Script Web App
-const API_URL = 'https://script.google.com/macros/s/AKfycbzV0LbIFePBoARK0iRfH_k90Hu9LEhG1hvW-vYyBZB7uvR4t19PYYYVu5KSXJG1npVwhQ/exec';
-
-function makeRequest(params) {
-    return new Promise((resolve, reject) => {
-        const queryString = new URLSearchParams(params).toString();
-        const fullUrl = `${API_URL}?${queryString}`;
-
-        const parsedUrl = new url.URL(fullUrl);
-
-        const options = {
-            hostname: parsedUrl.hostname,
-            path: parsedUrl.pathname + parsedUrl.search,
-            method: 'GET',
-            headers: {
-                'Accept': 'application/json'
-            }
-        };
-
-        const req = https.request(options, (res) => {
-            let data = '';
-
-            // Handle redirects (Google Apps Script often redirects)
-            if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-                const redirectUrl = new url.URL(res.headers.location);
-                const redirectOptions = {
-                    hostname: redirectUrl.hostname,
-                    path: redirectUrl.pathname + redirectUrl.search,
-                    method: 'GET',
-                    headers: {
-                        'Accept': 'application/json'
-                    }
-                };
-
-                const redirectReq = https.request(redirectOptions, (redirectRes) => {
-                    let redirectData = '';
-                    redirectRes.on('data', chunk => redirectData += chunk);
-                    redirectRes.on('end', () => {
-                        try {
-                            resolve(JSON.parse(redirectData));
-                        } catch (e) {
-                            resolve({ raw: redirectData });
-                        }
-                    });
-                });
-
-                redirectReq.on('error', reject);
-                redirectReq.end();
-                return;
-            }
-
-            res.on('data', chunk => data += chunk);
-            res.on('end', () => {
-                try {
-                    resolve(JSON.parse(data));
-                } catch (e) {
-                    resolve({ raw: data });
-                }
-            });
-        });
-
-        req.on('error', reject);
-        req.end();
-    });
-}
+const sheetsWriter = require('../lib/sheets-writer');
+const { fetchCSV, parseSheetTests } = require('../lib/sheets');
 
 async function getTests(category = null) {
-    const params = { action: 'getTests' };
-    if (category) params.category = category;
-    return await makeRequest(params);
-}
-
-async function getStats() {
-    return await makeRequest({ action: 'getStats' });
+    const config = require('../config/sheet-config.json');
+    const csv = await fetchCSV(config.sheetId, config.tabName || 'Arkusz1');
+    const tests = parseSheetTests(csv, { includeStatus: true });
+    if (category) {
+        const upper = category.toUpperCase();
+        return tests.filter(t => t.kategoria.toUpperCase().includes(upper));
+    }
+    return tests;
 }
 
 async function updateTest(row, column, value) {
-    return await makeRequest({
-        action: 'updateTest',
-        row: row,
-        column: column,
-        value: value
-    });
+    const ok = await sheetsWriter.updateCell(parseInt(row), column, value);
+    return { success: ok, row, column, value };
 }
 
 async function addResult(row, status, notes) {
-    const now = new Date().toISOString().slice(0, 10);
+    const now = new Date().toLocaleString('pl-PL');
+    const resultText = `[${status}] ${notes || ''}`;
 
-    // Aktualizuj datę ukończenia jeśli PASSED
-    if (status === 'PASSED') {
-        await updateTest(row, 'Completed At', now);
-    }
+    const { written, errors } = await sheetsWriter.batchUpdateResults([{
+        code: `row-${row}`,
+        status,
+        resultText,
+        finishedAtDisplay: now,
+        source: 'google-sheets-api',
+    }], { [`row-${row}`]: parseInt(row) });
 
-    // Aktualizuj Last Modified
-    await updateTest(row, 'Last Modified', now);
+    return { success: written > 0, written, errors };
+}
 
-    // Dodaj notatki o wyniku testu
-    const resultNote = `[${now}] ${status}: ${notes || ''}`;
-    return await updateTest(row, 'Notes', resultNote);
+async function readRange(range) {
+    return await sheetsWriter.readRange(range);
 }
 
 // CLI Interface
@@ -124,8 +58,12 @@ async function main() {
     const params = {};
     args.slice(1).forEach(arg => {
         if (arg.startsWith('--')) {
-            const [key, value] = arg.slice(2).split('=');
-            params[key] = value;
+            const eqIdx = arg.indexOf('=');
+            if (eqIdx > 0) {
+                params[arg.slice(2, eqIdx)] = arg.slice(eqIdx + 1);
+            } else {
+                params[arg.slice(2)] = true;
+            }
         }
     });
 
@@ -137,13 +75,9 @@ async function main() {
                 result = await getTests(params.category);
                 break;
 
-            case 'getStats':
-                result = await getStats();
-                break;
-
             case 'updateTest':
                 if (!params.row || !params.column) {
-                    console.error('Usage: node google-sheets-api.js updateTest --row=N --column="Column Name" --value="Value"');
+                    console.error('Usage: node google-sheets-api.js updateTest --row=N --column=G --value="Value"');
                     process.exit(1);
                 }
                 result = await updateTest(params.row, params.column, params.value || '');
@@ -151,27 +85,36 @@ async function main() {
 
             case 'addResult':
                 if (!params.row || !params.status) {
-                    console.error('Usage: node google-sheets-api.js addResult --row=N --status=PASSED|FAILED --notes="..."');
+                    console.error('Usage: node google-sheets-api.js addResult --row=N --status=PASSED --notes="..."');
                     process.exit(1);
                 }
                 result = await addResult(params.row, params.status, params.notes);
                 break;
 
+            case 'readRange':
+                if (!params.range) {
+                    console.error('Usage: node google-sheets-api.js readRange --range="Arkusz1!A1:I10"');
+                    process.exit(1);
+                }
+                result = await readRange(params.range);
+                break;
+
             default:
                 console.log(`
-Google Sheets API dla Agent Tester
+Google Sheets API dla Agent Tester (Sheets API v4)
 
 Komendy:
-  getTests                          Pobierz wszystkie testy
+  getTests                          Pobierz wszystkie testy (CSV)
   getTests --category=LOGOWANIE     Pobierz testy z kategorii
-  getStats                          Pobierz statystyki
-  updateTest --row=N --column="X" --value="Y"   Aktualizuj komórkę
+  updateTest --row=N --column=G --value="Y"   Aktualizuj komorke
   addResult --row=N --status=PASSED --notes="..." Zapisz wynik testu
+  readRange --range="Arkusz1!A1:I10"  Odczytaj zakres
 
-Przykłady:
-  node google-sheets-api.js getStats
+Przyklady:
   node google-sheets-api.js getTests --category=NAV
+  node google-sheets-api.js updateTest --row=5 --column=G --value=PASSED
   node google-sheets-api.js addResult --row=5 --status=PASSED --notes="Dashboard widoczny"
+  node google-sheets-api.js readRange --range="Arkusz1!G2:I10"
 `);
                 process.exit(0);
         }

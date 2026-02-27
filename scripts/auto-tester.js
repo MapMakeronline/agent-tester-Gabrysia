@@ -307,72 +307,33 @@ function updateMonitor(data) {
     fs.writeFileSync(CONFIG.TESTS_DATA, content, 'utf8');
 }
 
-// Wyślij wyniki do Google Sheets przez webhook
+// Wyślij wyniki do Google Sheets przez Sheets API v4
+const sheetsWriter = require('../lib/sheets-writer');
+
 async function sendResultsToSheet(results) {
-    // Sprawdź konfigurację webhook
-    let webhookConfig;
+    if (!results || results.length === 0) return false;
+
+    log('Wysyłam wyniki do arkusza Google (API v4)...');
+
+    // Build rowMap from results (each result should have row property)
+    const rowMap = {};
+    for (const r of results) {
+        if (r.code && r.row) rowMap[r.code] = r.row;
+    }
+
+    if (Object.keys(rowMap).length === 0) {
+        log('Brak row mapping - wyniki nie zostaną zapisane do arkusza');
+        return false;
+    }
+
     try {
-        webhookConfig = JSON.parse(fs.readFileSync(CONFIG.WEBHOOK_CONFIG, 'utf8'));
+        const { written, errors } = await sheetsWriter.batchUpdateResults(results, rowMap);
+        log(`Zapisano ${written}/${results.length} wyników do arkusza (${errors} błędów)`);
+        return written > 0;
     } catch (e) {
-        log('Brak konfiguracji webhook - wyniki nie zostaną zapisane do arkusza');
+        log(`Błąd zapisu do arkusza: ${e.message}`);
         return false;
     }
-
-    if (!webhookConfig.enabled || !webhookConfig.webhookUrl) {
-        log('Webhook wyłączony lub brak URL - wyniki nie zostaną zapisane do arkusza');
-        return false;
-    }
-
-    log('Wysyłam wyniki do arkusza Google...');
-
-    return new Promise((resolve) => {
-        const postData = JSON.stringify({ results });
-        const parsedUrl = new URL(webhookConfig.webhookUrl);
-
-        const options = {
-            hostname: parsedUrl.hostname,
-            path: parsedUrl.pathname + parsedUrl.search,
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Content-Length': Buffer.byteLength(postData)
-            }
-        };
-
-        const req = https.request(options, (res) => {
-            let data = '';
-            res.on('data', chunk => data += chunk);
-            res.on('end', () => {
-                try {
-                    const response = JSON.parse(data);
-                    if (response.success) {
-                        log(`Zapisano ${response.updated}/${response.total} wyników do arkusza`);
-                        resolve(true);
-                    } else {
-                        log(`Błąd zapisu do arkusza: ${response.error}`);
-                        resolve(false);
-                    }
-                } catch (e) {
-                    log(`Błąd parsowania odpowiedzi webhook: ${e.message}`);
-                    resolve(false);
-                }
-            });
-        });
-
-        req.on('error', (e) => {
-            log(`Błąd połączenia z webhook: ${e.message}`);
-            resolve(false);
-        });
-
-        req.setTimeout(30000, () => {
-            req.destroy();
-            log('Timeout podczas wysyłania do webhook');
-            resolve(false);
-        });
-
-        req.write(postData);
-        req.end();
-    });
 }
 
 function readMonitor() {

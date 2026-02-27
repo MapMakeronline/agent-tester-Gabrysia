@@ -46,7 +46,9 @@ const PW_RESULTS_PATH = path.join(DATA_DIR, 'pw-coded-results.json');
 const REMAINING_PATH = path.join(DATA_DIR, 'remaining-tests.json');
 const STOP_SIGNAL_PATH = path.join(MONITOR_DIR, 'stop-signal.txt');
 const LEARNED_DIR = path.join(MUIFRONTEND, 'e2e', 'learned-procedures');
-const WEBHOOK_CONFIG_PATH = path.join(CONFIG_DIR, 'webhook-config.json');
+const WEBHOOK_CONFIG_PATH = path.join(CONFIG_DIR, 'webhook-config.json'); // deprecated
+
+const sheetsWriter = require('../lib/sheets-writer');
 
 // ==================== CLI ARGS ====================
 
@@ -454,88 +456,13 @@ function parsePlaywrightResults() {
     return [];
 }
 
-// ==================== GSHEETS WRITE (Apps Script API) ====================
-
-function makeGoogleRequest(apiUrl, params) {
-    return new Promise((resolve, reject) => {
-        const queryString = new URLSearchParams(params).toString();
-        const fullUrl = `${apiUrl}?${queryString}`;
-        const parsed = new URL(fullUrl);
-
-        const doGet = (getUrl, redirects = 0) => {
-            if (redirects > 3) return resolve({ success: false, error: 'Too many redirects' });
-            const p = new URL(getUrl);
-            const req = https.request({
-                hostname: p.hostname,
-                path: p.pathname + p.search,
-                method: 'GET',
-                headers: { 'Accept': 'application/json' }
-            }, (res) => {
-                if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-                    res.resume();
-                    return doGet(res.headers.location, redirects + 1);
-                }
-                let data = '';
-                res.on('data', c => data += c);
-                res.on('end', () => {
-                    try { resolve(JSON.parse(data)); }
-                    catch { resolve({ raw: data }); }
-                });
-            });
-            req.on('error', reject);
-            req.setTimeout(15000, () => { req.destroy(); reject(new Error('Timeout')); });
-            req.end();
-        };
-
-        doGet(fullUrl);
-    });
-}
+// ==================== GSHEETS WRITE (Sheets API v4 via service account) ====================
 
 async function writeResultsToSheet(results, rowMap) {
     if (NO_WRITE || results.length === 0) return { written: 0, skipped: true };
 
-    // Load webhook config (Apps Script URL)
-    let webhookUrl;
-    try {
-        const cfg = JSON.parse(fs.readFileSync(WEBHOOK_CONFIG_PATH, 'utf8'));
-        if (cfg.enabled && cfg.webhookUrl) webhookUrl = cfg.webhookUrl;
-    } catch {}
-
-    if (!webhookUrl) {
-        // Fallback to credentials
-        const { getGoogleApiUrl } = require(path.join(CONFIG_DIR, 'credentials.js'));
-        webhookUrl = getGoogleApiUrl();
-    }
-
-    if (!webhookUrl) {
-        log('No API URL for GSheets write - skipping');
-        return { written: 0, skipped: true, reason: 'no API URL' };
-    }
-
-    log(`Writing ${results.length} results to Google Sheets...`);
-    let written = 0;
-    let errors = 0;
-
-    for (const result of results) {
-        const row = rowMap[result.code];
-        if (!row) { errors++; continue; }
-
-        try {
-            const status = result.status.toUpperCase();
-            const prefix = '[Coded] ';
-            const resultText = prefix + (result.resultText || result.name || '');
-            const dateStr = result.finishedAtDisplay || new Date().toLocaleString('pl-PL');
-
-            await makeGoogleRequest(webhookUrl, { action: 'updateTest', row, column: 'G', value: status });
-            await makeGoogleRequest(webhookUrl, { action: 'updateTest', row, column: 'H', value: resultText });
-            await makeGoogleRequest(webhookUrl, { action: 'updateTest', row, column: 'I', value: dateStr });
-            written++;
-        } catch (e) {
-            errors++;
-            log(`Error writing row ${row} for ${result.code}: ${e.message}`);
-        }
-    }
-
+    log(`Writing ${results.length} results to Google Sheets (API v4)...`);
+    const { written, errors } = await sheetsWriter.batchUpdateResults(results, rowMap);
     log(`GSheets write: ${written} OK, ${errors} errors`);
     return { written, errors };
 }

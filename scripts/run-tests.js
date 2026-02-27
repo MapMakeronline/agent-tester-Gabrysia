@@ -21,7 +21,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { spawn, execSync } = require('child_process');
+const { spawn } = require('child_process');
 
 // ==================== PATHS ====================
 
@@ -159,7 +159,9 @@ function runAutoTester() {
     });
 }
 
-// ==================== PHASE 3: GSHEETS WRITE ====================
+// ==================== PHASE 3: GSHEETS WRITE (Sheets API v4) ====================
+
+const sheetsWriter = require('../lib/sheets-writer');
 
 async function writeResultsToGSheets(pipelineResult) {
     if (NO_SHEETS) {
@@ -168,10 +170,7 @@ async function writeResultsToGSheets(pipelineResult) {
     }
 
     const config = loadSheetConfig();
-    const tabName = config.tabName || 'Arkusz1';
-    const sheetId = config.sheetId;
-
-    if (!sheetId) {
+    if (!config.sheetId) {
         log('Brak sheetId - pomijam GSheets');
         return;
     }
@@ -208,8 +207,8 @@ async function writeResultsToGSheets(pipelineResult) {
         }
     } catch {}
 
-    // Przygotuj batch update
-    const batchData = [];
+    // Przygotuj results array for batch update
+    const results = [];
     for (const test of monitorData.tests) {
         const row = rowMap[test.code];
         if (!row) continue;
@@ -217,39 +216,23 @@ async function writeResultsToGSheets(pipelineResult) {
         const status = (test.status || '').toUpperCase();
         if (!status || status === 'PENDING') continue;
 
-        const resultText = test.resultText || test.notes || test.error || '';
-        const dateStr = test.finishedAtDisplay || new Date().toLocaleString('pl-PL');
-
-        batchData.push({
-            range: `${tabName}!G${row}:I${row}`,
-            values: [[status, resultText, dateStr]]
+        results.push({
+            code: test.code,
+            status,
+            resultText: test.resultText || test.notes || test.error || '',
+            finishedAtDisplay: test.finishedAtDisplay || new Date().toLocaleString('pl-PL'),
+            source: test.source || 'run-tests',
         });
     }
 
-    if (batchData.length === 0) {
+    if (results.length === 0) {
         log('Brak wynikow z row mapping do GSheets');
         return;
     }
 
-    // Zapis przez save-test-result.js (ktory uzywa Google Sheets API)
-    log(`Zapisuje ${batchData.length} wynikow do GSheets...`);
-
-    for (const item of batchData) {
-        const row = item.range.match(/G(\d+)/)?.[1];
-        const [status, resultText, dateStr] = item.values[0];
-        const code = monitorData.tests.find(t => rowMap[t.code] === parseInt(row))?.code || '';
-
-        try {
-            execSync(
-                `node save-test-result.js --row=${row} --code="${code}" --name="" --status="${status}" --notes="${resultText.replace(/"/g, '\\"')}"`,
-                { cwd: SCRIPTS_DIR, stdio: 'ignore', timeout: 10000 }
-            );
-        } catch (e) {
-            log(`Warning: blad zapisu row ${row}: ${e.message}`);
-        }
-    }
-
-    log(`GSheets: zapisano ${batchData.length} wynikow`);
+    log(`Zapisuje ${results.length} wynikow do GSheets (API v4)...`);
+    const { written, errors } = await sheetsWriter.batchUpdateResults(results, rowMap);
+    log(`GSheets: zapisano ${written}/${results.length} (${errors} bledow)`);
 }
 
 // ==================== MAIN ====================

@@ -12,75 +12,9 @@
 
 const fs = require('fs');
 const path = require('path');
-const https = require('https');
-const url = require('url');
 
 const TESTS_DATA_FILE = path.join(__dirname, '..', 'monitor', 'tests-data.js');
-const GOOGLE_API_URL = 'https://script.google.com/macros/s/AKfycbzV0LbIFePBoARK0iRfH_k90Hu9LEhG1hvW-vYyBZB7uvR4t19PYYYVu5KSXJG1npVwhQ/exec';
-
-// ==================== GOOGLE SHEETS API ====================
-
-function makeGoogleRequest(params) {
-    return new Promise((resolve, reject) => {
-        const queryString = new URLSearchParams(params).toString();
-        const fullUrl = `${GOOGLE_API_URL}?${queryString}`;
-        const parsedUrl = new url.URL(fullUrl);
-
-        const options = {
-            hostname: parsedUrl.hostname,
-            path: parsedUrl.pathname + parsedUrl.search,
-            method: 'GET',
-            headers: { 'Accept': 'application/json' }
-        };
-
-        const req = https.request(options, (res) => {
-            if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-                const redirectUrl = new url.URL(res.headers.location);
-                const redirectOptions = {
-                    hostname: redirectUrl.hostname,
-                    path: redirectUrl.pathname + redirectUrl.search,
-                    method: 'GET',
-                    headers: { 'Accept': 'application/json' }
-                };
-
-                const redirectReq = https.request(redirectOptions, (redirectRes) => {
-                    let data = '';
-                    redirectRes.on('data', chunk => data += chunk);
-                    redirectRes.on('end', () => {
-                        try { resolve(JSON.parse(data)); }
-                        catch (e) { resolve({ raw: data }); }
-                    });
-                });
-                redirectReq.on('error', reject);
-                redirectReq.end();
-                return;
-            }
-
-            let data = '';
-            res.on('data', chunk => data += chunk);
-            res.on('end', () => {
-                try { resolve(JSON.parse(data)); }
-                catch (e) { resolve({ raw: data }); }
-            });
-        });
-
-        req.on('error', reject);
-        req.setTimeout(30000, () => {
-            req.destroy();
-            reject(new Error('Request timeout'));
-        });
-        req.end();
-    });
-}
-
-async function updateGoogleSheet(row, column, value) {
-    return await makeGoogleRequest({
-        action: 'updateTest',
-        row: row,
-        column: column,
-        value: value
-    });
-}
+const sheetsWriter = require('../lib/sheets-writer');
 
 // ==================== LOCAL MONITOR ====================
 
@@ -192,17 +126,18 @@ async function saveTestResult(params) {
     const now = new Date().toISOString().slice(0, 19);
     const today = now.slice(0, 10);
 
-    // 1. AKTUALIZUJ GOOGLE SHEETS
+    // 1. AKTUALIZUJ GOOGLE SHEETS (via Sheets API v4)
     let googleResult = { success: false };
     try {
-        if (status === 'PASSED') {
-            await updateGoogleSheet(row, 'Completed At', today);
-        }
-        await updateGoogleSheet(row, 'Last Modified', today);
-
-        // Dodaj notatkę o wyniku
-        const resultNote = `[${today}] ${status}: ${notes || error || ''}`;
-        googleResult = await updateGoogleSheet(row, 'Notes', resultNote);
+        const resultText = `[${today}] ${status}: ${notes || error || ''}`;
+        const { written } = await sheetsWriter.batchUpdateResults([{
+            code,
+            status,
+            resultText,
+            finishedAtDisplay: now.replace('T', ' '),
+            source: 'save-test-result',
+        }], { [code]: parseInt(row) });
+        googleResult = { success: written > 0 };
     } catch (e) {
         googleResult = { success: false, error: e.message };
     }
