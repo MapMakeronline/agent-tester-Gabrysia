@@ -9,13 +9,13 @@ const BASE_URL = 'https://universe-mapmaker.web.app';
 async function openMapProject(page: import('@playwright/test').Page) {
   await ensureLoggedIn(page);
 
-  // Navigate to dashboard / projects list
-  await page.goto(`${BASE_URL}/dashboard`);
-  await page.waitForURL(/\/(dashboard|projects|map)/, { timeout: 15_000 });
+  // Navigate to projects list
+  await page.goto(`${BASE_URL}/projects/my`);
+  await page.waitForURL(/\/(projects)/, { timeout: 15_000 });
 
-  // Click first available project to open the map
-  const projectLink = page.locator('a[href*="/map"], [data-testid*="project"], .project-card, .MuiCard-root').first();
-  await projectLink.click({ timeout: 15_000 });
+  // Click "Otwórz" button on the first project to open the map
+  const openButton = page.getByRole('button', { name: /Otw[oó]rz/i }).first();
+  await openButton.click({ timeout: 15_000 });
 
   // Wait for the map canvas (Mapbox GL / MapLibre renders into a canvas)
   const mapCanvas = page.locator('canvas.mapboxgl-canvas, canvas.maplibregl-canvas, .mapboxgl-map canvas, .maplibregl-map canvas, [class*="map"] canvas').first();
@@ -292,21 +292,21 @@ test.describe('NAWIGACJA MAPA', () => {
   // ---------------------------------------------------------------------------
   test('TC-NAV-008: Zmiana mapy podkladowej', async ({ page }) => {
     // Find the basemap / style switcher button
-    const basemapButton = page.locator(
-      '[data-testid*="basemap"], [data-testid*="style"], [aria-label*="basemap"], [aria-label*="Basemap"], [aria-label*="mapa podkladowa"], button:has-text("Basemap"), button:has-text("Style"), [class*="basemap"], [class*="style-switch"]'
-    ).first();
+    const basemapButton = page.locator('button', { hasText: /Mapa podk[lł]adowa/i }).first();
     await expect(basemapButton).toBeVisible({ timeout: 10_000 });
     await basemapButton.click();
     await waitForMapIdle(page, 500);
 
-    // Verify that a list/panel of basemap options appears
-    const optionsList = page.locator(
-      '[role="listbox"], [role="menu"], [role="radiogroup"], [class*="basemap"] li, [class*="style"] li, [class*="basemap-option"], [class*="style-option"], [data-testid*="basemap-option"]'
-    );
-    const optionsCount = await optionsList.count();
+    // Verify that basemap options appear (buttons like Ulice, Satelita, Biała etc.)
+    const knownBasemaps = ['Ulice', 'Satelita', 'Jasna', 'Ciemna', 'Outdoor', 'Biała'];
+    let foundCount = 0;
+    for (const name of knownBasemaps) {
+      const btn = page.getByRole('button', { name, exact: true });
+      if (await btn.isVisible().catch(() => false)) foundCount++;
+    }
 
-    // There should be at least 2 basemap options
-    expect(optionsCount).toBeGreaterThanOrEqual(1);
+    // There should be at least 2 basemap options visible
+    expect(foundCount).toBeGreaterThanOrEqual(2);
   });
 
   // ---------------------------------------------------------------------------
@@ -314,16 +314,15 @@ test.describe('NAWIGACJA MAPA', () => {
   // ---------------------------------------------------------------------------
   test('TC-NAV-009: Brak opcji OpenStreetMap w mapach podkladowych', async ({ page }) => {
     // Open basemap selector
-    const basemapButton = page.locator(
-      '[data-testid*="basemap"], [data-testid*="style"], [aria-label*="basemap"], [aria-label*="Basemap"], [aria-label*="mapa podkladowa"], button:has-text("Basemap"), button:has-text("Style"), [class*="basemap"], [class*="style-switch"]'
-    ).first();
+    const basemapButton = page.locator('button', { hasText: /Mapa podk[lł]adowa/i }).first();
     await expect(basemapButton).toBeVisible({ timeout: 10_000 });
     await basemapButton.click();
     await waitForMapIdle(page, 500);
 
-    // Known issue: OpenStreetMap option is missing from the list
-    const osmOption = page.getByText(/OpenStreetMap|OSM/i);
-    await expect(osmOption).toHaveCount(0);
+    // Known issue: OpenStreetMap option is missing from basemap options
+    // Note: "© OpenStreetMap" exists in map attribution - must scope to basemap buttons only
+    const osmButton = page.getByRole('button', { name: /OpenStreetMap|OSM/i });
+    await expect(osmButton).toHaveCount(0);
   });
 
   // ---------------------------------------------------------------------------
@@ -331,17 +330,13 @@ test.describe('NAWIGACJA MAPA', () => {
   // ---------------------------------------------------------------------------
   test('TC-NAV-010: Mapa podkladowa Satellite', async ({ page }) => {
     // Open basemap selector
-    const basemapButton = page.locator(
-      '[data-testid*="basemap"], [data-testid*="style"], [aria-label*="basemap"], [aria-label*="Basemap"], [aria-label*="mapa podkladowa"], button:has-text("Basemap"), button:has-text("Style"), [class*="basemap"], [class*="style-switch"]'
-    ).first();
+    const basemapButton = page.locator('button', { hasText: /Mapa podk[lł]adowa/i }).first();
     await expect(basemapButton).toBeVisible({ timeout: 10_000 });
     await basemapButton.click();
     await waitForMapIdle(page, 500);
 
-    // Click on satellite option
-    const satelliteOption = page.locator(
-      'text=/Satellite|Satelit/i, [data-testid*="satellite"], [data-value*="satellite"]'
-    ).first();
+    // Click on satellite option (UI uses Polish "Satelita")
+    const satelliteOption = page.locator('button', { hasText: /Satelita|Satellite/i }).first();
     await expect(satelliteOption).toBeVisible({ timeout: 5_000 });
     await satelliteOption.click();
     await waitForMapIdle(page, 2000);
@@ -373,9 +368,7 @@ test.describe('NAWIGACJA MAPA', () => {
   // ---------------------------------------------------------------------------
   test('TC-NAV-011: Brak opcji Terrain', async ({ page }) => {
     // Open basemap selector
-    const basemapButton = page.locator(
-      '[data-testid*="basemap"], [data-testid*="style"], [aria-label*="basemap"], [aria-label*="Basemap"], [aria-label*="mapa podkladowa"], button:has-text("Basemap"), button:has-text("Style"), [class*="basemap"], [class*="style-switch"]'
-    ).first();
+    const basemapButton = page.locator('button', { hasText: /Mapa podk[lł]adowa/i }).first();
     await expect(basemapButton).toBeVisible({ timeout: 10_000 });
     await basemapButton.click();
     await waitForMapIdle(page, 500);
@@ -390,9 +383,7 @@ test.describe('NAWIGACJA MAPA', () => {
   // ---------------------------------------------------------------------------
   test('TC-NAV-012: Brak opcji wylaczenia mapy podkladowej', async ({ page }) => {
     // Open basemap selector
-    const basemapButton = page.locator(
-      '[data-testid*="basemap"], [data-testid*="style"], [aria-label*="basemap"], [aria-label*="Basemap"], [aria-label*="mapa podkladowa"], button:has-text("Basemap"), button:has-text("Style"), [class*="basemap"], [class*="style-switch"]'
-    ).first();
+    const basemapButton = page.locator('button', { hasText: /Mapa podk[lł]adowa/i }).first();
     await expect(basemapButton).toBeVisible({ timeout: 10_000 });
     await basemapButton.click();
     await waitForMapIdle(page, 500);

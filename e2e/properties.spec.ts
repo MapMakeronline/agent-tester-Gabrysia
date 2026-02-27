@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures';
+import * as path from 'path';
 
 test.describe('WŁAŚCIWOŚCI', () => {
   // ---------------------------------------------------------------------------
@@ -232,27 +233,76 @@ test.describe('WŁAŚCIWOŚCI', () => {
 
   // TC-PROPS-012: Zmiana koloru obrysu
   test.skip('TC-PROPS-012: Zmiana koloru obrysu', () => {
-    // BLOCKED: wymaga eksploracji szczegółowego edytora symbolu (Edytuj na wierszu symbolu)
+    // BLOCKED: Edytor stylu (Styl warstwy > Edytuj) wyświetla TYLKO typ renderera
+    // (Pojedynczy symbol / Kategoryzowany) - brak kontrolek koloru obrysu w UI
   });
 
   // TC-PROPS-013: Zmiana grubości obrysu
   test.skip('TC-PROPS-013: Zmiana grubości obrysu', () => {
-    // BLOCKED: wymaga eksploracji szczegółowego edytora symbolu
+    // BLOCKED: Edytor stylu nie zawiera kontrolek grubości obrysu - brak UI
   });
 
   // TC-PROPS-014: Zmiana stylu linii
   test.skip('TC-PROPS-014: Zmiana stylu linii', () => {
-    // BLOCKED: wymaga eksploracji edytora stylu dla warstwy liniowej
+    // BLOCKED: Edytor stylu nie zawiera kontrolek stylu linii - brak UI
   });
 
   // TC-PROPS-015: Import stylu QML
-  test.skip('TC-PROPS-015: Import stylu QML', () => {
-    // BLOCKED: wymaga pliku QML do importu
+  test('TC-PROPS-015: Import stylu QML', async ({ page }) => {
+    await openLayerProperties(page);
+    await expandSection(page, 'Styl warstwy');
+
+    // Open style management dialog
+    const styleRegion = page.locator('[role="region"]').filter({
+      has: page.getByRole('button', { name: 'Etykietowanie' })
+    });
+    await styleRegion.getByRole('button', { name: 'Zarządzaj' }).click();
+
+    // Verify Import tab is active
+    await expect(page.getByRole('tab', { name: 'Importuj' })).toBeVisible({ timeout: 5_000 });
+
+    // Click the drop zone to trigger file chooser
+    const fileChooserPromise = page.waitForEvent('filechooser');
+    await page.getByText(/Upuść plik tutaj lub kliknij/).click();
+    const fileChooser = await fileChooserPromise;
+
+    // Set the fixture QML file
+    await fileChooser.setFiles(path.resolve(__dirname, 'fixtures', 'test-style.qml'));
+
+    // Verify the Import button becomes enabled after file selection
+    await expect(page.getByRole('button', { name: 'Importuj', exact: true }).last()).toBeEnabled({ timeout: 5_000 });
+
+    // Close dialog without actually importing to avoid side effects
+    await page.keyboard.press('Escape');
   });
 
   // TC-PROPS-016: Import stylu SLD
-  test.skip('TC-PROPS-016: Import stylu SLD', () => {
-    // BLOCKED: wymaga pliku SLD do importu
+  test('TC-PROPS-016: Import stylu SLD', async ({ page }) => {
+    await openLayerProperties(page);
+    await expandSection(page, 'Styl warstwy');
+
+    // Open style management dialog
+    const styleRegion = page.locator('[role="region"]').filter({
+      has: page.getByRole('button', { name: 'Etykietowanie' })
+    });
+    await styleRegion.getByRole('button', { name: 'Zarządzaj' }).click();
+
+    // Verify Import tab is active
+    await expect(page.getByRole('tab', { name: 'Importuj' })).toBeVisible({ timeout: 5_000 });
+
+    // Click the drop zone to trigger file chooser
+    const fileChooserPromise = page.waitForEvent('filechooser');
+    await page.getByText(/Upuść plik tutaj lub kliknij/).click();
+    const fileChooser = await fileChooserPromise;
+
+    // Set the fixture SLD file
+    await fileChooser.setFiles(path.resolve(__dirname, 'fixtures', 'test-style.sld'));
+
+    // Verify the Import button becomes enabled after file selection
+    await expect(page.getByRole('button', { name: 'Importuj', exact: true }).last()).toBeEnabled({ timeout: 5_000 });
+
+    // Close dialog without actually importing to avoid side effects
+    await page.keyboard.press('Escape');
   });
 
   // TC-PROPS-017: Eksport stylu
@@ -319,23 +369,82 @@ test.describe('WŁAŚCIWOŚCI', () => {
   });
 
   // TC-PROPS-020: Wybór kolumny etykietowania
-  test.skip('TC-PROPS-020: Wybór kolumny etykietowania', () => {
-    // BLOCKED: wymaga eksploracji dialogu etykietowania
+  test('TC-PROPS-020: Wybór kolumny etykietowania', async ({ page }) => {
+    await openLayerProperties(page);
+    await expandSection(page, 'Styl warstwy');
+
+    // Open labeling dialog
+    const styleRegion = page.locator('[role="region"]').filter({
+      has: page.getByRole('button', { name: 'Etykietowanie' })
+    });
+    await styleRegion.getByRole('button', { name: 'Etykietowanie' }).click();
+
+    // Wait for labeling dialog to appear
+    await expect(page.getByText('Nazwa kolumny')).toBeVisible({ timeout: 5_000 });
+
+    // Verify column combobox exists with a selected value
+    const columnCombobox = page.getByRole('combobox').first();
+    await expect(columnCombobox).toBeVisible();
+    const currentValue = await columnCombobox.textContent();
+    expect(currentValue).toBeTruthy();
+
+    // Click combobox to open dropdown
+    await columnCombobox.click();
+    await page.waitForTimeout(500);
+
+    // Verify dropdown options appear (listbox with column names)
+    const options = page.getByRole('option');
+    const optionCount = await options.count();
+    expect(optionCount).toBeGreaterThan(0);
+
+    // Close dropdown without changing
+    await page.keyboard.press('Escape');
+
+    // Close dialog
+    await page.getByRole('button', { name: 'Anuluj' }).click();
   });
 
   // TC-PROPS-021: Ustawienia czcionki etykiet
-  test.skip('TC-PROPS-021: Ustawienia czcionki etykiet', () => {
-    // BLOCKED: wymaga eksploracji ustawień czcionki w dialogu etykietowania
+  test('TC-PROPS-021: Ustawienia czcionki etykiet', async ({ page }) => {
+    await openLayerProperties(page);
+    await expandSection(page, 'Styl warstwy');
+
+    // Open labeling dialog
+    const styleRegion = page.locator('[role="region"]').filter({
+      has: page.getByRole('button', { name: 'Etykietowanie' })
+    });
+    await styleRegion.getByRole('button', { name: 'Etykietowanie' }).click();
+
+    // Verify label color input exists
+    await expect(page.getByText('Kolor etykiety')).toBeVisible({ timeout: 5_000 });
+    const colorInput = page.locator('input[value*="#"]').first();
+    await expect(colorInput).toBeVisible();
+    const colorValue = await colorInput.inputValue();
+    expect(colorValue).toMatch(/^#[0-9a-fA-F]{6}$/);
+
+    // Verify label size combobox exists
+    await expect(page.getByText('Rozmiar etykiety')).toBeVisible();
+    const sizeCombobox = page.locator('[role="combobox"]').filter({ hasText: /\d+/ }).first();
+    await expect(sizeCombobox).toBeVisible();
+
+    // Verify min/max scale controls exist
+    await expect(page.getByText('Minimalna skala')).toBeVisible();
+    await expect(page.getByText('Maksymalna skala')).toBeVisible();
+
+    // Close dialog
+    await page.getByRole('button', { name: 'Anuluj' }).click();
   });
 
   // TC-PROPS-022: Bufor tekstu etykiet
   test.skip('TC-PROPS-022: Bufor tekstu etykiet', () => {
-    // BLOCKED: wymaga eksploracji ustawień buforu w dialogu etykietowania
+    // BLOCKED: Dialog etykietowania nie zawiera kontrolki bufora tekstu - brak UI
+    // Dostępne kontrolki: Nazwa kolumny, Kolor, Rozmiar, Min/Max skala
   });
 
   // TC-PROPS-023: Pozycja etykiety
   test.skip('TC-PROPS-023: Pozycja etykiety', () => {
-    // BLOCKED: wymaga eksploracji ustawień pozycji w dialogu etykietowania
+    // BLOCKED: Dialog etykietowania nie zawiera kontrolki pozycji etykiety - brak UI
+    // Dostępne kontrolki: Nazwa kolumny, Kolor, Rozmiar, Min/Max skala
   });
 
   // TC-PROPS-024: Info o źródle
