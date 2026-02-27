@@ -1,0 +1,30 @@
+{
+  "type": "FeatureCollection",
+  "name": "TestLines",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "id": 1, "name": "Droga 1", "type": "road", "length_km": 2.5 },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [[19.93, 50.06], [19.94, 50.065], [19.95, 50.07], [19.96, 50.068]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "id": 2, "name": "Rzeka", "type": "river", "length_km": 4.2 },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [[19.92, 50.05], [19.935, 50.055], [19.945, 50.06], [19.96, 50.058], [19.97, 50.065]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "id": 3, "name": "Ścieżka", "type": "path", "length_km": 1.1 },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [[19.94, 50.055], [19.945, 50.06], [19.95, 50.062]]
+      }
+    }
+  ]
+}

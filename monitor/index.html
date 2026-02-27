@@ -1,0 +1,2420 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Universe MapMaker - Test Monitor</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #16213e;
+        }
+
+        h1 {
+            font-size: 2rem;
+            color: #e94560;
+            margin-bottom: 10px;
+        }
+
+        .last-update {
+            color: #888;
+            font-size: 0.9rem;
+        }
+
+        .project-info {
+            margin-top: 10px;
+            font-size: 0.85rem;
+        }
+
+        .project-info a {
+            color: #e94560;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .project-info a:hover {
+            color: #ff6b81;
+            text-decoration: underline;
+        }
+
+
+        .project-label {
+            color: #666;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+
+        .status-indicator.active {
+            background: #00ff88;
+        }
+
+        .status-indicator.idle {
+            background: #888;
+            animation: none;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Summary Cards */
+        .summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: #16213e;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            transition: transform 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-3px);
+            cursor: pointer;
+        }
+
+        .card.active {
+            outline: 3px solid;
+            outline-offset: -3px;
+            transform: translateY(-3px);
+        }
+
+        .card.total.active { outline-color: #fff; }
+        .card.passed.active { outline-color: #00ff88; }
+        .card.failed.active { outline-color: #ff4757; }
+        .card.in-progress.active { outline-color: #ffa502; }
+        .card.blocked.active { outline-color: #9b59b6; }
+        .card.pending.active { outline-color: #888; }
+
+        .card-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .card-label {
+            font-size: 0.85rem;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .card.total .card-value { color: #fff; }
+        .card.passed .card-value { color: #00ff88; }
+        .card.failed .card-value { color: #ff4757; }
+        .card.in-progress .card-value { color: #ffa502; }
+        .card.blocked .card-value { color: #9b59b6; }
+        .card.pending .card-value { color: #888; }
+
+        /* Agent Activity Panel */
+        .agent-activity {
+            background: linear-gradient(135deg, #0d253f 0%, #1a1a2e 100%);
+            border: 2px solid #3498db;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+
+        .agent-activity h2 {
+            color: #3498db;
+            font-size: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .agent-activity.active {
+            border-color: #00ff88;
+            box-shadow: 0 0 15px rgba(0, 255, 136, 0.2);
+        }
+
+        .agent-activity.active h2 {
+            color: #00ff88;
+        }
+
+        .agent-status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .agent-status-badge.running {
+            background: rgba(0, 255, 136, 0.2);
+            color: #00ff88;
+            animation: pulse-badge 1.5s infinite;
+        }
+
+        .agent-status-badge.idle {
+            background: rgba(136, 136, 136, 0.2);
+            color: #888;
+        }
+
+        .agent-status-badge.finished {
+            background: rgba(52, 152, 219, 0.2);
+            color: #3498db;
+        }
+
+        /* Agent Commands Info */
+        .agent-commands {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .cmd-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .cmd {
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 0.85rem;
+            font-weight: bold;
+        }
+
+        .cmd-desc {
+            font-size: 0.7rem;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .cmd.start-cmd {
+            background: rgba(46, 204, 113, 0.2);
+            color: #2ecc71;
+            border: 1px solid rgba(46, 204, 113, 0.3);
+        }
+
+        .cmd.stop-cmd {
+            background: rgba(231, 76, 60, 0.2);
+            color: #e74c3c;
+            border: 1px solid rgba(231, 76, 60, 0.3);
+        }
+
+
+        .stop-btn-icon {
+            font-size: 1.1rem;
+        }
+
+        .agent-header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        @keyframes pulse-badge {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.8; transform: scale(1.05); }
+        }
+
+        .agent-message {
+            background: rgba(0,0,0,0.3);
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 10px;
+            font-family: monospace;
+            font-size: 0.95rem;
+            color: #5dade2;
+            border-left: 3px solid #3498db;
+            min-height: 50px;
+        }
+
+        .agent-message.active {
+            color: #00ff88;
+            border-left-color: #00ff88;
+        }
+
+        .agent-times {
+            margin-top: 10px;
+            font-size: 0.8rem;
+            color: #666;
+        }
+
+        /* Current Test */
+        .current-test {
+            background: linear-gradient(135deg, #16213e 0%, #1a1a2e 100%);
+            border: 2px solid #e94560;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 30px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .current-test.active {
+            border-color: #00ff88;
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+        }
+
+        .current-test.active::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, #00ff88, transparent);
+            animation: scanning 2s linear infinite;
+        }
+
+        @keyframes scanning {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
+        .current-test h2 {
+            color: #e94560;
+            font-size: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 15px;
+        }
+
+        .current-test.active h2 {
+            color: #00ff88;
+        }
+
+        .current-test-code {
+            font-family: monospace;
+            color: #888;
+            font-size: 0.9rem;
+            margin-bottom: 5px;
+        }
+
+        .current-test-name {
+            font-size: 1.4rem;
+            margin-bottom: 10px;
+        }
+
+        .current-test-step {
+            margin-top: 15px;
+            padding: 15px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 0.95rem;
+            color: #00ff88;
+            border-left: 3px solid #00ff88;
+        }
+
+        .current-test-step::before {
+            content: '> ';
+            color: #e94560;
+        }
+
+        /* Kategoria aktualnego testu */
+        .current-test-category {
+            color: #888;
+            font-size: 0.85rem;
+            margin-top: 4px;
+        }
+
+        .no-test {
+            color: #888;
+            font-style: italic;
+        }
+
+        /* Test List */
+        .test-list h2 {
+            margin-bottom: 20px;
+            color: #e94560;
+        }
+
+        .test-item {
+            background: #16213e;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            overflow: hidden;
+        }
+
+        .test-item-header {
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .test-item-header:hover {
+            background: #1a2744;
+        }
+
+        .test-item.expanded .test-item-header {
+            border-bottom: 1px solid #0d0d1a;
+        }
+
+        .test-info {
+            flex: 1;
+        }
+
+        .test-code {
+            font-family: monospace;
+            color: #888;
+            font-size: 0.85rem;
+            margin-bottom: 3px;
+        }
+
+        .test-name {
+            font-size: 1rem;
+        }
+
+        .test-status {
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .test-expand-icon {
+            margin-left: 15px;
+            color: #666;
+            font-size: 0.8rem;
+            transition: transform 0.3s;
+        }
+
+        .test-item.expanded .test-expand-icon {
+            transform: rotate(180deg);
+        }
+
+        .test-details {
+            display: none;
+            padding: 20px;
+            background: #0d1525;
+            border-top: 1px solid #1a2744;
+        }
+
+        .test-item.expanded .test-details {
+            display: block;
+        }
+
+        /* Test Details - Meta info */
+        .test-meta {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+        }
+
+        .test-meta-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .test-meta-label {
+            font-size: 0.7rem;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .test-meta-value {
+            font-size: 0.9rem;
+            color: #fff;
+            font-family: monospace;
+        }
+
+        .test-meta-value.duration {
+            color: #ffa502;
+        }
+
+        /* Test Details - Sections */
+        .test-details-section {
+            margin-bottom: 20px;
+        }
+
+        .test-details-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .test-details-label {
+            font-size: 0.75rem;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .test-details-label .count {
+            background: #16213e;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.7rem;
+        }
+
+        .test-details-content {
+            font-size: 0.9rem;
+            line-height: 1.5;
+            padding: 12px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 6px;
+            font-family: monospace;
+        }
+
+        .test-details-content.success {
+            color: #00ff88;
+            border-left: 3px solid #00ff88;
+        }
+
+        .test-details-content.error {
+            color: #ff4757;
+            border-left: 3px solid #ff4757;
+        }
+
+        .test-details-content.none {
+            color: #666;
+            font-style: italic;
+        }
+
+        .test-details-content.diagnosis {
+            color: #ffa502;
+            border-left: 3px solid #ffa502;
+            line-height: 1.8;
+        }
+
+        .diagnosis-item {
+            display: flex;
+            gap: 8px;
+            align-items: flex-start;
+            margin-bottom: 6px;
+        }
+
+        .diagnosis-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .diagnosis-icon {
+            flex-shrink: 0;
+            color: #ffa502;
+        }
+
+        .diagnosis-text {
+            flex: 1;
+        }
+
+        .diagnosis-hint {
+            color: #888;
+            font-size: 0.8rem;
+        }
+
+
+        .test-status.passed {
+            background: rgba(0, 255, 136, 0.2);
+            color: #00ff88;
+        }
+
+        .test-status.failed {
+            background: rgba(255, 71, 87, 0.2);
+            color: #ff4757;
+        }
+
+        .test-status.blocked {
+            background: rgba(155, 89, 182, 0.2);
+            color: #9b59b6;
+        }
+
+        .test-status.in-progress {
+            background: rgba(255, 165, 2, 0.2);
+            color: #ffa502;
+        }
+
+        .test-status.pending {
+            background: rgba(136, 136, 136, 0.2);
+            color: #888;
+        }
+
+        .test-source-badge {
+            font-size: 0.65rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-left: 8px;
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        .test-source-badge.coded {
+            background: rgba(0, 200, 83, 0.15);
+            color: #00c853;
+            border: 1px solid rgba(0, 200, 83, 0.3);
+        }
+
+        .test-source-badge.llm {
+            background: rgba(41, 121, 255, 0.15);
+            color: #2979ff;
+            border: 1px solid rgba(41, 121, 255, 0.3);
+        }
+
+        .test-source-badge.learned {
+            background: rgba(156, 39, 176, 0.15);
+            color: #ab47bc;
+            border: 1px solid rgba(156, 39, 176, 0.3);
+        }
+
+        .test-time {
+            font-size: 0.75rem;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+
+        .empty-state-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #16213e;
+            color: #666;
+            font-size: 0.85rem;
+        }
+
+        /* Auto-refresh indicator */
+        .refresh-indicator {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #16213e;
+            padding: 10px 20px;
+            border-radius: 30px;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.2s;
+            user-select: none;
+        }
+
+        .refresh-indicator:hover {
+            background: #1a2744;
+            transform: scale(1.05);
+        }
+
+        .refresh-indicator:active {
+            transform: scale(0.95);
+        }
+
+        .refresh-spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid #333;
+            border-top-color: #e94560;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .refresh-spinner.paused {
+            animation: none;
+            border-top-color: #888;
+        }
+
+        .refresh-countdown {
+            min-width: 20px;
+            text-align: center;
+            color: #e94560;
+            font-weight: bold;
+        }
+
+        .refresh-btn {
+            background: #e94560;
+            border: none;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            margin-left: 5px;
+            transition: background 0.2s;
+        }
+
+        .refresh-btn:hover {
+            background: #ff6b81;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Log Panel - Enhanced */
+        .log-panel {
+            margin-top: 30px;
+            background: #0d0d1a;
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .log-panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .log-panel-header h2 {
+            color: #e94560;
+            font-size: 1rem;
+            margin: 0;
+        }
+
+        .log-controls {
+            display: flex;
+            gap: 10px;
+        }
+
+        .log-btn {
+            background: #16213e;
+            border: 1px solid #333;
+            color: #888;
+            padding: 5px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            transition: all 0.2s;
+        }
+
+        .log-btn:hover {
+            background: #1a2744;
+            color: #fff;
+            border-color: #e94560;
+        }
+
+        .log-entries {
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 0.85rem;
+        }
+
+        .log-entry {
+            padding: 8px 12px;
+            border-bottom: 1px solid #16213e;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+
+        .log-entry:hover {
+            background: rgba(255,255,255,0.02);
+        }
+
+        .log-time {
+            color: #666;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .log-type {
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            flex-shrink: 0;
+            min-width: 60px;
+            text-align: center;
+        }
+
+        .log-type.info { background: rgba(0, 255, 136, 0.2); color: #00ff88; }
+        .log-type.error { background: rgba(255, 71, 87, 0.2); color: #ff4757; }
+        .log-type.warning { background: rgba(255, 165, 2, 0.2); color: #ffa502; }
+        .log-type.step { background: rgba(93, 173, 226, 0.2); color: #5dade2; }
+        .log-type.test { background: rgba(233, 69, 96, 0.2); color: #e94560; }
+        .log-type.agent { background: rgba(52, 152, 219, 0.2); color: #3498db; }
+
+        .log-message {
+            flex: 1;
+            word-break: break-word;
+        }
+
+        .log-message.info { color: #00ff88; }
+        .log-message.error { color: #ff4757; }
+        .log-message.warning { color: #ffa502; }
+        .log-message.step { color: #5dade2; }
+        .log-message.test { color: #e94560; }
+        .log-message.agent { color: #3498db; }
+
+        .log-empty {
+            text-align: center;
+            color: #666;
+            padding: 30px;
+            font-style: italic;
+        }
+
+        /* Configuration Overlay */
+        .config-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(26, 26, 46, 0.98);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .config-overlay.hidden {
+            display: none;
+        }
+
+        .config-form {
+            background: #16213e;
+            border-radius: 16px;
+            padding: 40px;
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .config-form h2 {
+            color: #e94560;
+            margin-bottom: 10px;
+            font-size: 2rem;
+        }
+
+        .config-form .subtitle {
+            color: #888;
+            margin-bottom: 30px;
+            font-size: 0.95rem;
+        }
+
+        .config-input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #333;
+            border-radius: 8px;
+            background: #0d1525;
+            color: #fff;
+            font-size: 1rem;
+            margin-bottom: 20px;
+            transition: border-color 0.2s;
+        }
+
+        .config-input:focus {
+            outline: none;
+            border-color: #e94560;
+        }
+
+        .config-input::placeholder {
+            color: #666;
+        }
+
+        .config-submit {
+            background: #e94560;
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+            width: 100%;
+        }
+
+        .config-submit:hover {
+            background: #ff6b81;
+        }
+
+        .config-submit:active {
+            transform: scale(0.98);
+        }
+
+        .config-submit:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+
+        .config-mode-toggle {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .config-radio {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            color: #ccc;
+            font-size: 0.95rem;
+        }
+
+        .config-radio input[type="radio"] {
+            accent-color: #e94560;
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .config-radio:hover .radio-label {
+            color: #fff;
+        }
+
+        .config-test-id-group {
+            margin-bottom: 0;
+            transition: all 0.3s ease;
+            max-height: 80px;
+            overflow: hidden;
+        }
+
+        .config-test-id-group.hidden {
+            max-height: 0;
+            margin-bottom: 0;
+            opacity: 0;
+            pointer-events: none;
+            transform: none;
+        }
+
+        .config-hint {
+            margin-top: 20px;
+            font-size: 0.8rem;
+            color: #666;
+        }
+
+        .config-error {
+            color: #e94560;
+            margin-top: 10px;
+            font-size: 0.9rem;
+            display: none;
+        }
+
+        .config-error.visible {
+            display: block;
+        }
+
+        /* New Session Button */
+        .new-session-btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-left: 15px;
+        }
+
+        .new-session-btn:hover {
+            background: #5dade2;
+        }
+
+        /* Stop Button */
+        .stop-btn {
+            background: #e94560;
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: background 0.2s, opacity 0.2s;
+            margin-left: 10px;
+        }
+
+        .stop-btn:hover {
+            background: #ff6b81;
+        }
+
+        .stop-btn:disabled {
+            background: #666;
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Configuration Overlay -->
+    <div class="config-overlay" id="configOverlay">
+        <div class="config-form">
+            <h2>Test Monitor</h2>
+            <p class="subtitle">Universe MapMaker</p>
+            <form id="configForm" onsubmit="submitConfig(event)">
+                <input type="text"
+                       id="sheetInput"
+                       class="config-input"
+                       placeholder="Link do arkusza Google Sheets"
+                       autocomplete="off"
+                       required>
+
+                <div class="config-mode-toggle">
+                    <label class="config-radio">
+                        <input type="radio" name="testMode" value="all" checked onchange="toggleTestIdInput()">
+                        <span class="radio-label">Wszystkie testy</span>
+                    </label>
+                    <label class="config-radio">
+                        <input type="radio" name="testMode" value="single" onchange="toggleTestIdInput()">
+                        <span class="radio-label">Jeden test</span>
+                    </label>
+                </div>
+
+                <div id="testIdGroup" class="config-test-id-group hidden">
+                    <input type="text"
+                           id="testIdInput"
+                           class="config-input"
+                           placeholder="ID testu, np. TC-LOGIN-001"
+                           autocomplete="off">
+                </div>
+
+                <button type="submit" class="config-submit" id="submitBtn">
+                    Rozpocznij testy
+                </button>
+                <p class="config-error" id="configError"></p>
+            </form>
+            <p class="config-hint">
+                Wklej link https://docs.google.com/spreadsheets/d/... <br>
+                Tytuł arkusza zostanie pobrany automatycznie
+            </p>
+        </div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1>Test Monitor</h1>
+            <p style="color: #888; font-size: 1rem; margin-bottom: 5px;">Universe MapMaker</p>
+            <p class="project-info">
+                <span class="project-label">Arkusz Google:</span>
+                <a href="#" id="sheetLink" target="_blank">Ładowanie...</a>
+            </p>
+            <div class="header-controls">
+                <p class="last-update">
+                    <span class="status-indicator idle" id="statusIndicator"></span>
+                    Ostatnia aktualizacja: <span id="lastUpdate">-</span>
+                </p>
+                <button class="new-session-btn" id="newSessionBtn" onclick="showConfigOverlay()">
+                    Nowa sesja
+                </button>
+                <button class="stop-btn" id="stopBtn" onclick="stopTests()" style="display: none;">
+                    Zatrzymaj testy
+                </button>
+            </div>
+        </header>
+
+        <!-- Summary Cards -->
+        <div class="summary">
+            <div class="card total active" data-filter="all" onclick="setFilter('all')">
+                <div class="card-value" id="totalCount">0</div>
+                <div class="card-label">Wszystkie</div>
+            </div>
+            <div class="card passed" data-filter="passed" onclick="setFilter('passed')">
+                <div class="card-value" id="passedCount">0</div>
+                <div class="card-label">Passed</div>
+            </div>
+            <div class="card failed" data-filter="failed" onclick="setFilter('failed')">
+                <div class="card-value" id="failedCount">0</div>
+                <div class="card-label">Failed</div>
+            </div>
+            <div class="card in-progress" data-filter="in-progress" onclick="setFilter('in-progress')">
+                <div class="card-value" id="inProgressCount">0</div>
+                <div class="card-label">W trakcie</div>
+            </div>
+            <div class="card blocked" data-filter="blocked" onclick="setFilter('blocked')">
+                <div class="card-value" id="blockedCount">0</div>
+                <div class="card-label">Blocked</div>
+            </div>
+            <div class="card pending" data-filter="pending" onclick="setFilter('pending')" style="display:none;">
+                <div class="card-value" id="pendingCount">0</div>
+                <div class="card-label">Oczekuje</div>
+            </div>
+        </div>
+
+        <!-- Agent Activity -->
+        <div class="agent-activity" id="agentActivity">
+            <div class="agent-header-row">
+                <h2>
+                    <span>Aktywnosc Agenta</span>
+                    <span class="agent-status-badge idle" id="agentStatusBadge">Nieaktywny</span>
+                </h2>
+            </div>
+            <div class="agent-message" id="agentMessage">
+                Oczekiwanie na uruchomienie agenta testera...
+            </div>
+            <div class="agent-times" id="agentTimes"></div>
+        </div>
+
+        <!-- Current Test -->
+        <div class="current-test" id="currentTestBox">
+            <h2>Aktualnie testowane</h2>
+            <div id="currentTestContent">
+                <p class="no-test">Brak aktywnego testu</p>
+            </div>
+        </div>
+
+        <!-- Test List -->
+        <div class="test-list">
+            <h2>Lista testow <span id="filterLabel" style="font-weight: normal; font-size: 0.8em; color: #888;"></span></h2>
+            <div id="testListContent">
+                <div class="empty-state">
+                    <div class="empty-state-icon">🧪</div>
+                    <p>Brak testow do wyswietlenia</p>
+                    <p>Agent tester zapisze tutaj wyniki po uruchomieniu /tester</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Log Panel -->
+        <div class="log-panel">
+            <div class="log-panel-header">
+                <h2>Log zdarzen (<span id="logCount">0</span>)</h2>
+                <div class="log-controls">
+                    <button class="log-btn" onclick="clearLogs()">Wyczysc logi</button>
+                    <button class="log-btn" onclick="exportLogs()">Eksportuj</button>
+                </div>
+            </div>
+            <div class="log-entries" id="logEntries">
+                <div class="log-empty">Oczekiwanie na dane...</div>
+            </div>
+        </div>
+
+        <footer>
+            Universe MapMaker Test Monitor | Auto-refresh co 2 sekundy
+         <p>Aby zatrzymać agenta wpisz do wiersza poleceń: test-stop</p>
+
+            <br><small style="color:#666">Jeśli auto-refresh nie działa: użyj <code>start-server.bat</code> i otwórz <a href="http://localhost:8080" style="color:#e94560">localhost:8080</a></small>
+        </footer>
+    </div>
+
+    <div class="refresh-indicator" onclick="manualRefresh()" title="Kliknij aby odswiezyc teraz">
+        <div class="refresh-spinner" id="refreshSpinner"></div>
+        <span class="refresh-countdown" id="refreshCountdown">2</span>
+        <span>Auto-refresh</span>
+        <button class="refresh-btn" onclick="event.stopPropagation(); toggleAutoRefresh();" id="toggleRefreshBtn">Pause</button>
+        <button class="refresh-btn" onclick="event.stopPropagation(); location.reload();" title="Pelne przeladowanie strony" style="background:#3498db;">F5</button>
+    </div>
+
+    <script id="tests-data-script" src="tests-data.js"></script>
+    <script>
+        // ============================================
+        // KONFIGURACJA
+        // ============================================
+        const REFRESH_INTERVAL = 2; // sekundy
+        const MAX_LOGS = 200; // maksymalna liczba logów w pamięci
+
+        // ============================================
+        // STAN APLIKACJI
+        // ============================================
+        let lastData = null;
+        let lastDataStr = '';
+        let logs = [];
+        let autoRefreshEnabled = true;
+        let refreshCountdown = REFRESH_INTERVAL;
+        let refreshIntervalId = null;
+        let countdownIntervalId = null;
+
+        // Śledzenie zmian testów
+        let previousTestStatuses = {};
+        let previousAgentRunning = null;
+        let previousCurrentTest = null;
+
+        // Śledź aktualną sesję agenta (po startedAt)
+        let currentSessionStartedAt = localStorage.getItem('currentSessionStartedAt') || null;
+
+        // Odczytaj rozwinięte testy z localStorage
+        let expandedTests = new Set(JSON.parse(localStorage.getItem('expandedTests') || '[]'));
+
+        // Odczytaj filtr z localStorage lub ustaw domyślny
+        // Zawsze startuj z filtrem "all" - użytkownik może zmienić ręcznie
+        let currentFilter = 'all';
+
+        // Odczytaj logi z localStorage
+        function loadLogsFromStorage() {
+            try {
+                const storedLogs = localStorage.getItem('testMonitorLogs');
+                const storedSession = localStorage.getItem('testMonitorLogsSession');
+
+                // Tylko wczytaj logi jeśli są z bieżącej sesji
+                if (storedLogs && storedSession === currentSessionStartedAt) {
+                    logs = JSON.parse(storedLogs);
+                } else {
+                    logs = [];
+                }
+            } catch (e) {
+                logs = [];
+            }
+        }
+
+        function saveLogsToStorage() {
+            try {
+                localStorage.setItem('testMonitorLogs', JSON.stringify(logs.slice(0, MAX_LOGS)));
+                localStorage.setItem('testMonitorLogsSession', currentSessionStartedAt || '');
+            } catch (e) {
+                console.error('Failed to save logs to localStorage:', e);
+            }
+        }
+
+        // ============================================
+        // FUNKCJE ZARZĄDZANIA SESJĄ
+        // ============================================
+        function resetForNewSession(newStartedAt) {
+            console.log('Nowa sesja agenta wykryta! Resetuję dashboard...');
+
+            // Zapisz nowy czas startu sesji
+            currentSessionStartedAt = newStartedAt;
+            localStorage.setItem('currentSessionStartedAt', newStartedAt);
+
+            // Wyczyść rozwinięte testy
+            expandedTests.clear();
+            localStorage.setItem('expandedTests', '[]');
+
+            // Wyczyść poprzednie statusy testów
+            previousTestStatuses = {};
+            previousCurrentTest = null;
+
+            // Wyczyść logi i dodaj info o nowej sesji
+            logs = [];
+            addLog('Nowa sesja agenta - dashboard zresetowany', 'agent');
+
+            // Reset lastData żeby wymusić pełne odświeżenie
+            lastData = null;
+            lastDataStr = '';
+        }
+
+        // ============================================
+        // FUNKCJE LOGOWANIA
+        // ============================================
+        function addLog(message, type = 'info') {
+            const now = new Date();
+            const time = now.toLocaleTimeString('pl-PL', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+            const fullTime = now.toLocaleString('pl-PL');
+
+            // Unikaj duplikatów (ten sam komunikat w ciągu 1 sekundy)
+            if (logs.length > 0 && logs[0].message === message &&
+                (now - new Date(logs[0].fullTime)) < 1000) {
+                return;
+            }
+
+            logs.unshift({ time, fullTime, message, type, timestamp: now.toISOString() });
+            if (logs.length > MAX_LOGS) logs.pop();
+
+            saveLogsToStorage();
+            renderLogs();
+        }
+
+        function renderLogs() {
+            const container = document.getElementById('logEntries');
+            const countSpan = document.getElementById('logCount');
+
+            countSpan.textContent = logs.length;
+
+            if (logs.length === 0) {
+                container.innerHTML = '<div class="log-empty">Brak zdarzen do wyswietlenia</div>';
+                return;
+            }
+
+            container.innerHTML = logs.map(log => `
+                <div class="log-entry" title="${log.fullTime || log.time}">
+                    <span class="log-time">${log.time}</span>
+                    <span class="log-type ${log.type}">${getLogTypeLabel(log.type)}</span>
+                    <span class="log-message ${log.type}">${escapeHtml(log.message)}</span>
+                </div>
+            `).join('');
+        }
+
+        function getLogTypeLabel(type) {
+            const labels = {
+                'info': 'INFO',
+                'error': 'ERROR',
+                'warning': 'WARN',
+                'step': 'STEP',
+                'test': 'TEST',
+                'agent': 'AGENT'
+            };
+            return labels[type] || type.toUpperCase();
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function clearLogs() {
+            logs = [];
+            saveLogsToStorage();
+            renderLogs();
+            addLog('Logi wyczyszczone', 'info');
+        }
+
+        function exportLogs() {
+            const logText = logs.map(log =>
+                `[${log.fullTime || log.time}] [${getLogTypeLabel(log.type)}] ${log.message}`
+            ).join('\n');
+
+            const blob = new Blob([logText], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `test-monitor-logs-${new Date().toISOString().slice(0,10)}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            addLog('Logi wyeksportowane', 'info');
+        }
+
+        // ============================================
+        // AKTUALIZACJA KOMEND AGENTA
+        // ============================================
+        function updateAgentControlButton(isRunning) {
+            const commands = document.getElementById('agentCommands');
+            if (!commands) return; // Element nie istnieje - pomiń
+            if (isRunning) {
+                commands.classList.add('running');
+            } else {
+                commands.classList.remove('running');
+            }
+        }
+
+        // ============================================
+        // FUNKCJE ODŚWIEŻANIA
+        // ============================================
+        function updateCountdownDisplay() {
+            const countdownEl = document.getElementById('refreshCountdown');
+            countdownEl.textContent = refreshCountdown;
+        }
+
+        function manualRefresh() {
+            addLog('Reczne odswiezenie', 'info');
+            refreshCountdown = REFRESH_INTERVAL;
+            updateCountdownDisplay();
+            reloadDataScript();
+        }
+
+        function toggleAutoRefresh() {
+            autoRefreshEnabled = !autoRefreshEnabled;
+            const btn = document.getElementById('toggleRefreshBtn');
+            const spinner = document.getElementById('refreshSpinner');
+
+            if (autoRefreshEnabled) {
+                btn.textContent = 'Pause';
+                spinner.classList.remove('paused');
+                startRefreshCycle();
+                addLog('Auto-refresh wlaczony', 'info');
+            } else {
+                btn.textContent = 'Resume';
+                spinner.classList.add('paused');
+                stopRefreshCycle();
+                addLog('Auto-refresh zatrzymany', 'warning');
+            }
+        }
+
+        function startRefreshCycle() {
+            // Clear existing intervals
+            stopRefreshCycle();
+
+            // Countdown interval (co 1 sekundę)
+            countdownIntervalId = setInterval(() => {
+                if (autoRefreshEnabled) {
+                    refreshCountdown--;
+                    updateCountdownDisplay();
+
+                    if (refreshCountdown <= 0) {
+                        refreshCountdown = REFRESH_INTERVAL;
+                        reloadDataScript();
+                    }
+                }
+            }, 1000);
+        }
+
+        function stopRefreshCycle() {
+            if (countdownIntervalId) {
+                clearInterval(countdownIntervalId);
+                countdownIntervalId = null;
+            }
+        }
+
+        function reloadDataScript() {
+            // Metoda 1: Przeładuj skrypt dynamicznie
+            const oldScript = document.getElementById('tests-data-script');
+            if (oldScript) {
+                oldScript.remove();
+            }
+
+            const newScript = document.createElement('script');
+            newScript.id = 'tests-data-script';
+            newScript.src = 'tests-data.js?t=' + Date.now();
+
+            newScript.onload = function() {
+                loadData();
+            };
+
+            newScript.onerror = function() {
+                // Fallback: użyj XMLHttpRequest
+                reloadDataScriptXHR();
+            };
+
+            document.body.appendChild(newScript);
+        }
+
+        function reloadDataScriptXHR() {
+            const xhr = new XMLHttpRequest();
+            xhr.open('GET', 'tests-data.js?t=' + Date.now(), true);
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4) {
+                    if (xhr.status === 200 || xhr.status === 0) {
+                        try {
+                            let content = xhr.responseText;
+                            const match = content.match(/var testData\s*=\s*(\{[\s\S]*\});?/);
+                            if (match && match[1]) {
+                                window.testData = JSON.parse(match[1]);
+                                loadData();
+                            } else {
+                                eval(content);
+                                loadData();
+                            }
+                        } catch (e) {
+                            addLog('Blad parsowania: ' + e.message, 'error');
+                        }
+                    }
+                }
+            };
+            xhr.send();
+        }
+
+        // ============================================
+        // FUNKCJE FILTROWANIA
+        // ============================================
+        function setFilter(filter, skipLog = false) {
+            currentFilter = filter;
+            localStorage.setItem('testMonitorFilter', filter);
+
+            // Usuń active ze wszystkich kart
+            document.querySelectorAll('.card').forEach(card => {
+                card.classList.remove('active');
+            });
+
+            // Dodaj active do wybranej karty (z null check)
+            const selectedCard = document.querySelector(`.card[data-filter="${filter}"]`);
+            if (selectedCard) {
+                selectedCard.classList.add('active');
+            } else {
+                // Fallback do "all" jeśli karta nie istnieje
+                const allCard = document.querySelector('.card[data-filter="all"]');
+                if (allCard) allCard.classList.add('active');
+                currentFilter = 'all';
+            }
+
+            const filterLabel = document.getElementById('filterLabel');
+            if (filterLabel) {
+                if (currentFilter === 'all') {
+                    filterLabel.textContent = '';
+                } else {
+                    filterLabel.textContent = `(${getFilterLabel(currentFilter)})`;
+                }
+            }
+
+            // Aktualizuj listę testów
+            if (lastData && lastData.tests) {
+                updateTestList(lastData.tests);
+            } else if (typeof testData !== 'undefined' && testData.tests) {
+                // Fallback - użyj bezpośrednio testData jeśli lastData nie istnieje
+                updateTestList(testData.tests);
+            }
+
+            if (!skipLog) {
+                addLog(`Filtr zmieniony: ${getFilterLabel(currentFilter)}`, 'info');
+            }
+        }
+
+        function getFilterLabel(filter) {
+            const labels = {
+                'all': 'Wszystkie',
+                'passed': 'Passed',
+                'failed': 'Failed',
+                'in-progress': 'W trakcie',
+                'blocked': 'Blocked',
+                'pending': 'Oczekuje'
+            };
+            return labels[filter] || filter;
+        }
+
+        // ============================================
+        // FUNKCJE FORMATOWANIA
+        // ============================================
+        function formatDateTime(isoString) {
+            if (!isoString) return '-';
+            const date = new Date(isoString);
+            return date.toLocaleString('pl-PL');
+        }
+
+        function formatTime(isoString) {
+            if (!isoString) return '-';
+            const date = new Date(isoString);
+            return date.toLocaleTimeString('pl-PL');
+        }
+
+        // ============================================
+        // FUNKCJE AKTUALIZACJI UI
+        // ============================================
+        function updateSummary(summary) {
+            const passed = summary.passed || 0;
+            const failed = summary.failed || 0;
+            const inProgress = summary.inProgress || 0;
+            const blocked = summary.blocked || 0;
+            const pending = summary.pending || 0;
+            // Użyj total z agenta jeśli dostępny, inaczej oblicz jako sumę
+            const computed = passed + failed + inProgress + blocked + pending;
+            const total = summary.total > 0 ? summary.total : computed;
+
+            document.getElementById('totalCount').textContent = total;
+            document.getElementById('passedCount').textContent = passed;
+            document.getElementById('failedCount').textContent = failed;
+            document.getElementById('inProgressCount').textContent = inProgress;
+            document.getElementById('blockedCount').textContent = blocked;
+            document.getElementById('pendingCount').textContent = pending;
+        }
+
+        // Sprawdź czy agent faktycznie pracuje (uwzględniając czas ostatniej aktualizacji)
+        // UWAGA: Timeout zwiększony do 120 sekund, bo agent może wykonywać długie operacje
+        function checkIfAgentRunning(agent, lastUpdate) {
+            if (!agent) return false;
+
+            // Jeśli agent oznaczył się jako finished - nie pracuje
+            if (agent.finished) return false;
+
+            // Jeśli agent ma flagę isRunning = false - nie pracuje
+            if (!agent.isRunning) return false;
+
+            // Znajdź najnowszy timestamp z dostępnych źródeł
+            const timestamps = [
+                lastUpdate,
+                agent.startedAt,
+                agent.lastHeartbeat
+            ].filter(Boolean).map(t => new Date(t).getTime());
+
+            if (timestamps.length === 0) return true; // Brak danych - zaufaj fladze isRunning
+
+            const latestTimestamp = Math.max(...timestamps);
+            const now = Date.now();
+            const diffSeconds = (now - latestTimestamp) / 1000;
+
+            // Timeout 120 sekund - agent może wykonywać długie operacje Playwright
+            // Po 120 sekundach bez aktualizacji uznajemy że agent się zawiesił
+            if (diffSeconds > 120) {
+                return false;
+            }
+            return true;
+        }
+
+        function updateAgentActivity(agent, lastUpdate) {
+            const container = document.getElementById('agentActivity');
+            const badge = document.getElementById('agentStatusBadge');
+            const message = document.getElementById('agentMessage');
+            const times = document.getElementById('agentTimes');
+            const indicator = document.getElementById('statusIndicator');
+
+            container.classList.remove('active');
+            badge.classList.remove('running', 'idle', 'finished');
+            message.classList.remove('active');
+            indicator.classList.remove('active', 'idle');
+
+            // Prosta logika - ufamy fladze isRunning ustawianej przez agenta
+            // (poprzednia wersja używała checkIfAgentRunning z timeoutem 30s, co powodowało fałszywe "Nieaktywny")
+            const isActuallyRunning = agent && agent.isRunning && !agent.finished;
+
+            if (isActuallyRunning) {
+                container.classList.add('active');
+                badge.classList.add('running');
+                badge.textContent = 'Pracuje';
+                message.classList.add('active');
+                message.textContent = agent.currentAction || 'Agent pracuje...';
+                indicator.classList.add('active');
+                updateAgentControlButton(true);
+            } else if (agent.finished) {
+                updateAgentControlButton(false);
+                badge.classList.add('finished');
+                badge.textContent = 'Zakończono';
+                message.textContent = agent.lastAction || 'Testy zakończone';
+                indicator.classList.add('idle');
+            } else {
+                badge.classList.add('idle');
+                badge.textContent = 'Nieaktywny';
+                message.textContent = agent.lastAction || 'Oczekiwanie na uruchomienie agenta testera...';
+                indicator.classList.add('idle');
+                updateAgentControlButton(false);
+            }
+
+            let timeText = '';
+            if (isActuallyRunning) {
+                // Agent pracuje - pokaż kiedy wystartował
+                if (agent.startedAt) {
+                    timeText = 'Start: ' + formatDateTime(agent.startedAt);
+                }
+            } else {
+                // Agent nie pracuje - pokaż kiedy zakończył
+                if (agent.finishedAt) {
+                    timeText = 'Zakończono: ' + formatDateTime(agent.finishedAt);
+                } else if (lastUpdate) {
+                    timeText = 'Zakończono: ' + formatDateTime(lastUpdate);
+                }
+            }
+            times.textContent = timeText;
+        }
+
+        function updateCurrentTest(currentTest, isAgentRunning) {
+            const container = document.getElementById('currentTestContent');
+            const testBox = document.getElementById('currentTestBox');
+
+            if (!currentTest || !isAgentRunning) {
+                container.innerHTML = '<p class="no-test">Brak aktywnego testu</p>';
+                testBox.classList.remove('active');
+                return;
+            }
+
+            testBox.classList.add('active');
+
+            const currentStepText = currentTest.step || '';
+            const kategoria = currentTest.kategoria || currentTest.category || '';
+            const actionText = currentStepText || 'Inicjalizacja...';
+
+            container.innerHTML = `
+                <div class="current-test-code">${currentTest.code || currentTest.id || ''}</div>
+                <div class="current-test-name">${currentTest.name || 'Nieznany test'}</div>
+                ${kategoria ? `<div class="current-test-category">${escapeHtml(kategoria)}</div>` : ''}
+                <div class="current-test-step">${escapeHtml(actionText)}</div>
+            `;
+        }
+
+        function formatDurationMs(ms) {
+            if (!ms && ms !== 0) return null;
+            const totalSeconds = Math.floor(ms / 1000);
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            const tenths = Math.floor((ms % 1000) / 100);
+
+            if (minutes > 0) {
+                return `${minutes}m ${seconds}s`;
+            } else {
+                return `${seconds}.${tenths}s`;
+            }
+        }
+
+        function calculateDuration(startTime, endTime) {
+            if (!startTime || !endTime) return null;
+            const start = new Date(startTime);
+            const end = new Date(endTime);
+            const diffMs = end - start;
+            if (diffMs < 0) return null;
+            return formatDurationMs(diffMs);
+        }
+
+
+        function diagnoseError(errorText, test) {
+            const err = (errorText || '').toLowerCase();
+            const causes = [];
+
+            // Timeout errors
+            if (err.includes('timeout') && err.includes('exceeded')) {
+                const timeoutMatch = errorText.match(/Timeout (\d+)ms/i);
+                const timeoutSec = timeoutMatch ? (parseInt(timeoutMatch[1]) / 1000) + 's' : '';
+
+                if (err.includes('locator.click') || err.includes('locator.fill') || err.includes('locator.type')) {
+                    causes.push({
+                        text: 'Element nie pojawil sie na stronie w wymaganym czasie' + (timeoutSec ? ` (${timeoutSec})` : ''),
+                        hint: 'Element moze byc ukryty, miec inny selektor, lub nie renderowac sie w tym widoku'
+                    });
+                }
+                if (err.includes('waiting for locator')) {
+                    // Extract selector info
+                    const selectorMatch = errorText.match(/waiting for locator\('([^']+)'\)/);
+                    if (selectorMatch) {
+                        causes.push({
+                            text: 'Selektor nie pasuje do zadnego elementu: ' + selectorMatch[1].substring(0, 100),
+                            hint: 'Sprawdz czy selektor jest aktualny - UI mogl sie zmienic po ostatnim uaktualnieniu kodu'
+                        });
+                    }
+                }
+                if (err.includes('navigation') || err.includes('goto')) {
+                    causes.push({
+                        text: 'Strona nie zaladowala sie w wymaganym czasie',
+                        hint: 'Serwer moze byc niedostepny lub wolno odpowiadac'
+                    });
+                }
+                if (!causes.length) {
+                    causes.push({
+                        text: 'Operacja przekroczyla limit czasu' + (timeoutSec ? ` (${timeoutSec})` : ''),
+                        hint: 'Strona lub element mogly nie zaladowac sie na czas'
+                    });
+                }
+            }
+
+            // Element not found / not visible
+            if (err.includes('not visible') || err.includes('not attached') || err.includes('element is not')) {
+                causes.push({
+                    text: 'Element istnieje w DOM ale nie jest widoczny lub interaktywny',
+                    hint: 'Moze byc przykryty przez inny element (overlay, modal, loader) lub miec display:none'
+                });
+            }
+
+            // Strict mode violations
+            if (err.includes('strict mode violation') || err.includes('resolved to') && err.includes('elements')) {
+                const countMatch = errorText.match(/resolved to (\d+) elements/i);
+                causes.push({
+                    text: 'Selektor pasuje do wielu elementow' + (countMatch ? ` (${countMatch[1]})` : ''),
+                    hint: 'Uzyj bardziej precyzyjnego selektora (np. .first(), .nth(), dodatkowy filtr)'
+                });
+            }
+
+            // Network / API errors
+            if (err.includes('net::err_') || err.includes('econnrefused') || err.includes('econnreset') || err.includes('fetch failed')) {
+                causes.push({
+                    text: 'Blad polaczenia sieciowego',
+                    hint: 'Serwer API lub aplikacja moze byc niedostepna. Sprawdz czy localhost:3000 dziala'
+                });
+            }
+
+            if (err.includes('net::err_connection_refused')) {
+                causes.push({
+                    text: 'Aplikacja nie jest uruchomiona lub port jest zamkniety',
+                    hint: 'Uruchom npm run dev i poczekaj na localhost:3000'
+                });
+            }
+
+            // Authentication / login
+            if (err.includes('login') || err.includes('zaloguj') || err.includes('unauthorized') || err.includes('401')) {
+                causes.push({
+                    text: 'Problem z uwierzytelnianiem lub sesja wygasla',
+                    hint: 'Test moze wymagac logowania, sprawdz dane logowania w konfiguracji testow'
+                });
+            }
+
+            // Assertion failures
+            if (err.includes('expect(') || err.includes('tobevisible') || err.includes('tohavetext') || err.includes('tocontain')) {
+                causes.push({
+                    text: 'Asercja nie zostala spelniona - wynik rozni sie od oczekiwanego',
+                    hint: 'Sprawdz czy oczekiwany tekst/stan jest poprawny po zmianach w UI'
+                });
+            }
+
+            // Frame / iframe
+            if (err.includes('frame') && (err.includes('detached') || err.includes('navigat'))) {
+                causes.push({
+                    text: 'Ramka (frame/iframe) zostala odlaczona lub przeladowana w trakcie testu',
+                    hint: 'Mapa lub panel mogl sie przeladowac - dodaj oczekiwanie na stabilnosc'
+                });
+            }
+
+            // Target closed / browser crash
+            if (err.includes('target closed') || err.includes('browser has been closed') || err.includes('context has been closed')) {
+                causes.push({
+                    text: 'Przegladarka lub kontekst zostaly zamkniete w trakcie testu',
+                    hint: 'Moze byc spowodowane crashem aplikacji lub zbyt malym limitem pamieci'
+                });
+            }
+
+            // WMS / map specific
+            if (err.includes('wms') || err.includes('warstwa') || err.includes('layer') || err.includes('dodaj warstw')) {
+                causes.push({
+                    text: 'Problem z funkcjonalnoscia warstw lub WMS',
+                    hint: 'Sprawdz czy serwer WMS jest dostepny i czy UI warstw nie zmienil sie'
+                });
+            }
+
+            // Fallback
+            if (causes.length === 0) {
+                causes.push({
+                    text: 'Nieoczekiwany blad w tescie',
+                    hint: 'Przeanalizuj pelny stack trace powyzej lub uruchom test ponownie w trybie debug'
+                });
+            }
+
+            return causes.map(c =>
+                `<div class="diagnosis-item"><span class="diagnosis-icon">&#9888;</span><div class="diagnosis-text">${escapeHtml(c.text)}<br><span class="diagnosis-hint">${escapeHtml(c.hint)}</span></div></div>`
+            ).join('');
+        }
+
+        function renderTestDetails(test) {
+            let html = '';
+
+            // Obsłuż zarówno startTime/endTime jak i startedAt/finishedAt
+            const startTime = test.startTime || test.startedAt;
+            const endTime = test.endTime || test.finishedAt;
+
+            // Meta info - czasy
+            const hasTimeInfo = startTime || endTime;
+            const normalizedStatus = normalizeStatus(test.status);
+            if (hasTimeInfo || normalizedStatus !== 'pending') {
+                const duration = typeof test.duration === 'number' ? formatDurationMs(test.duration) : calculateDuration(startTime, endTime);
+                html += `
+                    <div class="test-meta">
+                        <div class="test-meta-item">
+                            <span class="test-meta-label">Status</span>
+                            <span class="test-meta-value">${getStatusLabel(normalizedStatus)}</span>
+                        </div>
+                        ${startTime ? `
+                        <div class="test-meta-item">
+                            <span class="test-meta-label">Rozpoczęto</span>
+                            <span class="test-meta-value">${formatDateTime(startTime)}</span>
+                        </div>
+                        ` : ''}
+                        ${endTime ? `
+                        <div class="test-meta-item">
+                            <span class="test-meta-label">Zakończono</span>
+                            <span class="test-meta-value">${formatDateTime(endTime)}</span>
+                        </div>
+                        ` : ''}
+                        ${duration ? `
+                        <div class="test-meta-item">
+                            <span class="test-meta-label">Czas trwania</span>
+                            <span class="test-meta-value duration">${duration}</span>
+                        </div>
+                        ` : ''}
+                    </div>
+                `;
+            }
+
+            // Błąd
+            if (test.error) {
+                const diagnosis = diagnoseError(test.error, test);
+                html += `
+                    <div class="test-details-section">
+                        <div class="test-details-label">Błąd</div>
+                        <div class="test-details-content error">${escapeHtml(test.error)}</div>
+                    </div>
+                    <div class="test-details-section">
+                        <div class="test-details-label">Możliwe przyczyny</div>
+                        <div class="test-details-content diagnosis">${diagnosis}</div>
+                    </div>
+                `;
+            }
+
+            // Opis testu (resultText lub kategoria + nazwa)
+            const resultText = test.resultText || test.notes || '';
+            const kategoria = test.kategoria || test.category || '';
+            const description = resultText || (kategoria ? `${kategoria}: ${test.name || ''}` : (test.name || ''));
+
+            if (description) {
+                const descClass = normalizedStatus === 'passed' ? 'success' : normalizedStatus === 'failed' ? 'error' : '';
+                html += `
+                    <div class="test-details-section">
+                        <div class="test-details-label">Wynik</div>
+                        <div class="test-details-content ${descClass}">${escapeHtml(description)}</div>
+                    </div>
+                `;
+            }
+
+            // Dodatkowe szczegóły (jeśli są)
+            if (test.details && !test.error) {
+                html += `
+                    <div class="test-details-section">
+                        <div class="test-details-label">Szczegóły</div>
+                        <div class="test-details-content success">${escapeHtml(test.details)}</div>
+                    </div>
+                `;
+            }
+
+            // Jeśli brak jakichkolwiek informacji
+            if (!html.trim()) {
+                html = '<div class="test-details-content none">Test oczekuje na wykonanie</div>';
+            }
+
+            return html;
+        }
+
+        // Normalizuj status do formatu kebab-case używanego przez filtry
+        function normalizeStatus(status) {
+            if (!status) return 'pending';
+            // Obsłuż camelCase (inProgress -> in-progress)
+            if (status === 'inProgress') return 'in-progress';
+            // Obsłuż snake_case (in_progress -> in-progress)
+            if (status === 'in_progress') return 'in-progress';
+            return status;
+        }
+
+        function updateTestList(tests) {
+            const container = document.getElementById('testListContent');
+
+            if (!tests || tests.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">🧪</div>
+                        <p>Brak testow do wyswietlenia</p>
+                        <p>Agent tester zapisze tutaj wyniki po uruchomieniu: @tester</p>
+
+                    </div>
+                `;
+                return;
+            }
+
+            let filteredTests = tests;
+            if (currentFilter !== 'all') {
+                filteredTests = tests.filter(test => {
+                    const status = normalizeStatus(test.status);
+                    return status === currentFilter;
+                });
+            }
+
+            if (filteredTests.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">🔍</div>
+                        <p>Brak testow dla filtra: ${getFilterLabel(currentFilter)}</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const sortedTests = [...filteredTests].reverse();
+
+            container.innerHTML = sortedTests.map((test, index) => {
+                // Obsłuż zarówno 'code' jak i 'id'
+                const testCode = test.code || test.id || `test-${index}`;
+                const isExpanded = expandedTests.has(testCode);
+                // Obsłuż zarówno startTime/endTime jak i startedAt/finishedAt
+                const startTime = test.startTime || test.startedAt;
+                const endTime = test.endTime || test.finishedAt;
+                const duration = typeof test.duration === 'number' ? formatDurationMs(test.duration) : calculateDuration(startTime, endTime);
+                const stepsCount = test.steps ? test.steps.length : 0;
+                const normalizedStatus = normalizeStatus(test.status);
+
+                return `
+                <div class="test-item${isExpanded ? ' expanded' : ''}" data-test-code="${testCode}">
+                    <div class="test-item-header" onclick="toggleTestDetails('${testCode}')">
+                        <div class="test-info">
+                            <div class="test-code">${testCode}</div>
+                            <div class="test-name">${escapeHtml(test.name || 'Nieznany test')}</div>
+                            <div class="test-time">
+                                ${startTime ? formatDateTime(startTime) : ''}
+                                ${duration ? ` (${duration})` : ''}
+                            </div>
+                        </div>
+                        ${test.source === 'playwright-coded' ? '<span class="test-source-badge coded">Coded</span>' : test.source === 'llm-learned' ? '<span class="test-source-badge learned">Learned</span>' : test.source === 'llm-agent' ? '<span class="test-source-badge llm">LLM</span>' : ''}
+                        <span class="test-status ${normalizedStatus}">${getStatusLabel(normalizedStatus)}</span>
+                        <span class="test-expand-icon">▼</span>
+                    </div>
+                    <div class="test-details">
+                        ${renderTestDetails(test)}
+                    </div>
+                </div>
+            `}).join('');
+        }
+
+        function toggleTestDetails(testCode) {
+            const testItem = document.querySelector(`[data-test-code="${testCode}"]`);
+            if (testItem) {
+                testItem.classList.toggle('expanded');
+                if (testItem.classList.contains('expanded')) {
+                    expandedTests.add(testCode);
+                } else {
+                    expandedTests.delete(testCode);
+                }
+                localStorage.setItem('expandedTests', JSON.stringify([...expandedTests]));
+            }
+        }
+
+        function getStatusLabel(status) {
+            const labels = {
+                'passed': 'PASSED',
+                'failed': 'FAILED',
+                'blocked': 'BLOCKED',
+                'in-progress': 'W TRAKCIE',
+                'pending': 'OCZEKUJE'
+            };
+            return labels[status] || status || 'OCZEKUJE';
+        }
+
+        // ============================================
+        // GŁÓWNA FUNKCJA ŁADOWANIA DANYCH
+        // ============================================
+        function loadData() {
+            try {
+                if (typeof testData === 'undefined') {
+                    return;
+                }
+
+                const data = testData;
+
+                // Wykrywanie nowej sesji
+                if (data.agentStatus && data.agentStatus.startedAt) {
+                    const newStartedAt = data.agentStatus.startedAt;
+                    if (currentSessionStartedAt !== newStartedAt) {
+                        resetForNewSession(newStartedAt);
+                    }
+                }
+
+                const dataStr = JSON.stringify(data);
+
+                if (dataStr !== lastDataStr) {
+                    // === LOGOWANIE ZDARZEŃ AGENTA ===
+                    if (data.agentStatus) {
+                        // Agent uruchomiony
+                        if (previousAgentRunning === false && data.agentStatus.isRunning === true) {
+                            addLog('Agent URUCHOMIONY - rozpoczynam testy', 'agent');
+                        }
+                        // Agent zakończył
+                        else if (previousAgentRunning === true && data.agentStatus.isRunning === false) {
+                            if (data.agentStatus.finished) {
+                                addLog('Agent ZAKONCZYL prace', 'agent');
+                            }
+                        }
+
+                        // Aktualna akcja agenta
+                        if (data.agentStatus.currentAction && data.agentStatus.isRunning) {
+                            // Tylko loguj jeśli akcja się zmieniła
+                            const lastAction = lastData?.agentStatus?.currentAction;
+                            if (lastAction !== data.agentStatus.currentAction) {
+                                addLog(data.agentStatus.currentAction, 'step');
+                            }
+                        }
+
+                        previousAgentRunning = data.agentStatus.isRunning;
+                    }
+
+                    // === LOGOWANIE ZMIAN TESTÓW ===
+                    if (data.tests && data.tests.length > 0) {
+                        data.tests.forEach(test => {
+                            const testCode = test.code || test.id || test.name;
+                            const prevStatus = previousTestStatuses[testCode];
+                            const currentStatus = normalizeStatus(test.status);
+
+                            // Nowy test dodany
+                            if (!prevStatus && currentStatus) {
+                                if (currentStatus === 'in-progress') {
+                                    addLog(`[${testCode}] Rozpoczeto: ${test.name}`, 'test');
+                                }
+                            }
+                            // Zmiana statusu
+                            else if (prevStatus && prevStatus !== currentStatus) {
+                                if (currentStatus === 'passed') {
+                                    addLog(`[${testCode}] PASSED: ${test.name}`, 'info');
+                                } else if (currentStatus === 'failed') {
+                                    const errorMsg = test.error ? ` - ${test.error.substring(0, 100)}` : '';
+                                    addLog(`[${testCode}] FAILED: ${test.name}${errorMsg}`, 'error');
+                                } else if (currentStatus === 'in-progress') {
+                                    addLog(`[${testCode}] Rozpoczeto: ${test.name}`, 'test');
+                                }
+                            }
+
+                            previousTestStatuses[testCode] = currentStatus;
+                        });
+                    }
+
+                    // === LOGOWANIE ZMIANY CURRENT TEST ===
+                    if (data.currentTest) {
+                        const currentTestId = data.currentTest.code || data.currentTest.id || data.currentTest.name;
+                        const prevTestId = previousCurrentTest?.code || previousCurrentTest?.id || previousCurrentTest?.name;
+
+                        if (currentTestId !== prevTestId) {
+                            // Nowy test aktualny - już logowane powyżej
+                        }
+
+                        // Logowanie kroków testu
+                        if (data.currentTest.step &&
+                            data.currentTest.step !== previousCurrentTest?.step) {
+                            // Krok testu - już logowane jako currentAction agenta
+                        }
+
+                        previousCurrentTest = { ...data.currentTest };
+                    } else {
+                        previousCurrentTest = null;
+                    }
+
+                    lastData = data;
+                    lastDataStr = dataStr;
+
+                    // Aktualizacja UI - użyj aktualnego czasu, nie z pliku
+                    document.getElementById('lastUpdate').textContent = new Date().toLocaleString('pl-PL');
+
+                    // Aktualizuj link do arkusza Google
+                    const sheetLink = document.getElementById('sheetLink');
+                    if (sheetLink) {
+                        if (data.sheetUrl || data.sheetId) {
+                            // Wyświetl tytuł podany przez użytkownika lub skrócony URL
+                            let displayName = data.sheetTitle;
+                            if (!displayName && data.sheetUrl) {
+                                // Pokaż skrócony URL
+                                displayName = data.sheetUrl.replace('https://docs.google.com/spreadsheets/d/', '').substring(0, 25) + '...';
+                            } else if (!displayName) {
+                                displayName = data.sheetId.substring(0, 20) + '...';
+                            }
+                            sheetLink.textContent = displayName;
+                            sheetLink.href = data.sheetUrl || `https://docs.google.com/spreadsheets/d/${data.sheetId}/edit`;
+                            sheetLink.title = data.sheetUrl || data.sheetId;
+                        } else if (sheetLink.textContent === 'Ładowanie...') {
+                            sheetLink.textContent = 'Brak arkusza';
+                            sheetLink.href = '#';
+                        }
+                    }
+
+                    updateSummary(data.summary || {});
+
+                    // Prosta logika - ufamy fladze isRunning (spójna z updateAgentActivity)
+                    const agent = data.agentStatus || {};
+                    const isActuallyRunning = agent.isRunning && !agent.finished;
+
+                    updateAgentActivity(agent, data.lastUpdate);
+                    updateCurrentTest(data.currentTest, isActuallyRunning);
+                    updateTestList(data.tests || []);
+
+                    // Sprawdź czy pokazać/ukryć formularz konfiguracji
+                    checkShowConfigOverlay();
+                }
+            } catch (error) {
+                addLog('Blad przetwarzania danych: ' + error.message, 'error');
+            }
+        }
+
+        // ============================================
+        // INICJALIZACJA
+        // ============================================
+
+        // Flagi: muszą być PRZED loadData! (temporal dead zone prevention)
+        let userOpenedOverlay = false;
+        let stoppingInProgress = false;
+
+        // Wczytaj logi z localStorage
+        loadLogsFromStorage();
+
+        // Wczytaj dane
+        loadData();
+
+        // Ustaw początkowy stan przycisku STOP
+        updateAgentControlButton(false);
+
+        // Zastosuj filtr "Wszystkie" i wyświetl testy
+        setFilter('all', true);
+
+        // Wymuś wyświetlenie testów przy starcie
+        if (typeof testData !== 'undefined' && testData.tests) {
+            updateTestList(testData.tests);
+        }
+
+        // ============================================
+        // CONFIGURATION OVERLAY
+        // ============================================
+
+        function hideConfigOverlay() {
+            const overlay = document.getElementById('configOverlay');
+            if (overlay) overlay.classList.add('hidden');
+        }
+
+        function showConfigError(message) {
+            const errorEl = document.getElementById('configError');
+            if (errorEl) {
+                errorEl.textContent = message;
+                errorEl.classList.add('visible');
+            }
+        }
+
+        function hideConfigError() {
+            const errorEl = document.getElementById('configError');
+            if (errorEl) errorEl.classList.remove('visible');
+        }
+
+        function toggleTestIdInput() {
+            const mode = document.querySelector('input[name="testMode"]:checked').value;
+            const group = document.getElementById('testIdGroup');
+            const testIdInput = document.getElementById('testIdInput');
+
+            if (mode === 'single') {
+                group.classList.remove('hidden');
+                testIdInput.focus();
+            } else {
+                group.classList.add('hidden');
+                testIdInput.value = '';
+            }
+        }
+
+        async function submitConfig(event) {
+            event.preventDefault();
+            hideConfigError();
+
+            const input = document.getElementById('sheetInput').value.trim();
+            const submitBtn = document.getElementById('submitBtn');
+            const testMode = document.querySelector('input[name="testMode"]:checked').value;
+            const testId = document.getElementById('testIdInput').value.trim().toUpperCase();
+
+            if (!input) {
+                showConfigError('Wprowadź link do arkusza');
+                return;
+            }
+
+            if (testMode === 'single' && !testId) {
+                showConfigError('Wprowadź ID testu (np. TC-LOGIN-001)');
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Uruchamiam...';
+
+            // Parse input - URL
+            let config = {};
+            if (input.includes('docs.google.com/spreadsheets')) {
+                // Extract sheet ID from URL
+                const match = input.match(/\/d\/([a-zA-Z0-9-_]+)/);
+                if (match) {
+                    config.sheetId = match[1];
+                    config.sheetUrl = input;
+                }
+            } else {
+                showConfigError('Wprowadź prawidłowy link do arkusza Google Sheets');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Rozpocznij testy';
+                return;
+            }
+
+            // Pobierz tytuł arkusza
+            try {
+                const sheetPageResp = await fetch(`https://docs.google.com/spreadsheets/d/${config.sheetId}/edit`);
+                const sheetPageHtml = await sheetPageResp.text();
+                const titleMatch = sheetPageHtml.match(/<title>([^<]+)<\/title>/);
+                if (titleMatch) {
+                    config.sheetTitle = titleMatch[1].replace(/ - Arkusze Google$/, '').replace(/ - Google Sheets$/, '').trim();
+                }
+            } catch (e) {
+                // Nie udało się pobrać tytułu - kontynuuj bez niego
+            }
+
+            // Dodaj testId jeśli tryb pojedynczego testu
+            if (testMode === 'single' && testId) {
+                config.testId = testId;
+            }
+
+            try {
+                const response = await fetch('/api/start', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ...config, agentMode: true })
+                });
+
+                const result = await response.json();
+
+                if (response.ok && result.success) {
+                    hideConfigOverlay();
+                    const modeLabel = testMode === 'single' ? `test ${testId}` : 'wszystkie testy';
+                    addLog(`Konfiguracja zapisana - uruchamiam ${modeLabel}`, 'agent');
+                } else {
+                    throw new Error(result.error || 'Błąd serwera');
+                }
+            } catch (error) {
+                showConfigError('Błąd: ' + error.message);
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Rozpocznij testy';
+            }
+        }
+
+        function checkShowConfigOverlay() {
+            if (typeof testData !== 'undefined') {
+                const agent = testData.agentStatus || {};
+                const tests = testData.tests || [];
+
+                // Automatycznie pokaż formularz tylko gdy:
+                // - nie ma żadnych danych (świeży start)
+                // - agent nie działa i nie zakończył (czyli nic się nie dzieje)
+                const shouldAutoShow = !agent.isRunning && !agent.finished && tests.length === 0;
+
+                if (shouldAutoShow && !userOpenedOverlay) {
+                    showConfigOverlay();
+                }
+
+                // Ukryj formularz gdy testy się uruchomią (chyba że użytkownik go otworzył)
+                if (agent.isRunning) {
+                    hideConfigOverlay();
+                    userOpenedOverlay = false;
+                }
+
+                // Update buttons
+                updateStopButton(agent.isRunning);
+            } else {
+                // No data - show overlay
+                showConfigOverlay();
+                updateStopButton(false);
+            }
+        }
+
+        async function showConfigOverlay() {
+            userOpenedOverlay = true;
+            // Reset sesji na serwerze (zatrzymaj testy, wyczyść dane)
+            try {
+                await fetch('/api/reset', { method: 'POST' });
+                addLog('Sesja zresetowana', 'agent');
+            } catch (e) {
+                // Ignore - może działamy offline (file://)
+            }
+            // Reset stanu dashboardu
+            lastData = null;
+            lastDataStr = '';
+            previousTestStatuses = {};
+            previousCurrentTest = null;
+            previousAgentRunning = null;
+
+            const overlay = document.getElementById('configOverlay');
+            if (overlay) overlay.classList.remove('hidden');
+        }
+
+        function updateStopButton(isRunning) {
+            const stopBtn = document.getElementById('stopBtn');
+            const newSessionBtn = document.getElementById('newSessionBtn');
+
+            if (isRunning) {
+                // Testy działają - pokaż STOP, ukryj Nowa sesja
+                if (stopBtn) {
+                    stopBtn.style.display = 'inline-block';
+                    if (!stoppingInProgress) {
+                        stopBtn.disabled = false;
+                        stopBtn.textContent = 'Zatrzymaj testy';
+                        stopBtn.style.background = '#e94560';
+                    }
+                }
+                if (newSessionBtn) {
+                    newSessionBtn.style.display = 'none';
+                }
+            } else {
+                // Testy nie działają - ukryj STOP, pokaż Nowa sesja
+                if (stoppingInProgress) {
+                    addLog('Testy zatrzymane', 'agent');
+                    resetStopButton();
+                }
+                if (stopBtn) {
+                    stopBtn.style.display = 'none';
+                }
+                if (newSessionBtn) {
+                    newSessionBtn.style.display = 'inline-block';
+                }
+            }
+        }
+
+        async function stopTests() {
+            const stopBtn = document.getElementById('stopBtn');
+            if (stopBtn) {
+                stopBtn.disabled = true;
+                stopBtn.textContent = 'Zatrzymywanie...';
+                stopBtn.style.background = '#f39c12';
+            }
+            stoppingInProgress = true;
+
+            try {
+                const response = await fetch('/api/stop', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                if (response.ok) {
+                    addLog('Wysłano sygnał STOP - czekam na zakończenie aktualnego testu...', 'agent');
+                } else {
+                    throw new Error('Błąd serwera');
+                }
+            } catch (error) {
+                addLog('Błąd zatrzymywania: ' + error.message, 'error');
+                stoppingInProgress = false;
+                if (stopBtn) {
+                    stopBtn.textContent = 'Zatrzymaj testy';
+                    stopBtn.disabled = false;
+                    stopBtn.style.background = '';
+                }
+            }
+            // Button stays in "stopping" state until tests actually stop
+        }
+
+        function resetStopButton() {
+            stoppingInProgress = false;
+            const stopBtn = document.getElementById('stopBtn');
+            if (stopBtn) {
+                stopBtn.textContent = 'Zatrzymaj testy';
+                stopBtn.disabled = false;
+                stopBtn.style.background = '';
+            }
+        }
+
+        // Log startu monitora
+        addLog('Monitor uruchomiony', 'info');
+
+        // Renderuj logi
+        renderLogs();
+
+        // Sprawdź czy pokazać formularz konfiguracji
+        checkShowConfigOverlay();
+
+        // Uruchom cykl odświeżania
+        startRefreshCycle();
+    </script>
+</body>
+</html>

@@ -1,0 +1,96 @@
+{
+  "version": 1,
+  "lastUpdate": "2026-02-06",
+  "description": "Baza wiedzy agenta - napotykane błędy i ich rozwiązania. Agent MUSI konsultować ten plik przed testami i aktualizować go po napotkaniu nowego błędu.",
+  "errors": [
+    {
+      "id": "ERR-001",
+      "pattern": "Name Box w Google Sheets nie reaguje na kliknięcie",
+      "context": "Aktualizacja wyników testu w arkuszu Google - próba nawigacji do komórki przez Name Box",
+      "symptoms": ["Kliknięcie w Name Box nie aktywuje pola", "Wpisany adres komórki nie przenosi kursora"],
+      "solution": "Użyj browser_click na Name Box, potem browser_type z submit:true. Jeśli nadal nie działa, użyj browser_run_code z page.keyboard.press('Control+g') lub nawiguj ręcznie klikając w komórkę.",
+      "fallback": "browser_run_code z bezpośrednią manipulacją komórki przez Sheets API",
+      "firstSeen": "2026-02-06",
+      "lastSeen": "2026-02-06",
+      "occurrences": 1,
+      "resolved": true
+    },
+    {
+      "id": "ERR-002",
+      "pattern": "confirm/alert dialog blokuje Playwright",
+      "context": "Testy wymagające potwierdzenia w natywnym dialogu przeglądarki (np. usuwanie projektu)",
+      "symptoms": ["Playwright zawiesza się po wywołaniu confirm()", "Brak możliwości kliknięcia OK/Anuluj"],
+      "solution": "Oznacz test jako BLOCKED z opisem: 'Playwright MCP nie obsługuje natywnych dialogów JS'. Zapisz w memory.md jako ograniczenie środowiska.",
+      "fallback": null,
+      "firstSeen": "2026-02-06",
+      "lastSeen": "2026-02-06",
+      "occurrences": 1,
+      "affectedTests": ["TC-PROJ-015", "TC-PROJ-016"],
+      "resolved": false
+    },
+    {
+      "id": "ERR-003",
+      "pattern": "402 Payment Required przy imporcie plików",
+      "context": "Testy importu warstw - konto testowe nie ma subskrypcji",
+      "symptoms": ["Błąd 402 po próbie uploadu pliku", "Komunikat o braku subskrypcji"],
+      "solution": "Oznacz test jako BLOCKED z opisem: 'Konto testowe nie ma subskrypcji - import plików zwraca 402'. Dotyczy TC-IMPORT-002+.",
+      "fallback": null,
+      "firstSeen": "2026-02-06",
+      "lastSeen": "2026-02-06",
+      "occurrences": 1,
+      "resolved": false
+    },
+    {
+      "id": "ERR-004",
+      "pattern": "Oczekiwano dashboard, otrzymano /login po zalogowaniu",
+      "context": "auto-tester.js - walidacja po teście logowania (TC-LOGIN-001)",
+      "symptoms": ["Oczekiwano dashboard, otrzymano: https://universe-mapmaker.web.app/login"],
+      "solution": "SPA redirect jest wolny po wyczyszczeniu cookies/storage. Dodano waitForURL z 10s timeout przed sprawdzeniem URL. Dodano waitForLoadState('networkidle') po loginTest.",
+      "fallback": null,
+      "firstSeen": "2026-02-06",
+      "lastSeen": "2026-02-06",
+      "occurrences": 1,
+      "affectedTests": ["TC-LOGIN-001"],
+      "resolved": true
+    },
+    {
+      "id": "ERR-005",
+      "pattern": "Timeout czekając na pole 'Nazwa uzytkownika' po czyszczeniu sesji",
+      "context": "auto-tester.js - izolacja testów logowania czyściła cookies PODWÓJNIE (raz w pętli, raz w ensureOnLoginPage), co powodowało race condition z przeładowaniem SPA",
+      "symptoms": ["locator.waitFor: Timeout 15000ms exceeded", "waiting for locator('role=textbox[name=\"Nazwa uzytkownika\"]') to be visible"],
+      "solution": "1) Usunięto podwójne czyszczenie cookies - teraz tylko w ensureOnLoginPage. 2) Zwiększono timeout z 15s/20s do 30s. 3) Dodano waitUntil: 'domcontentloaded' do goto().",
+      "fallback": null,
+      "firstSeen": "2026-02-06",
+      "lastSeen": "2026-02-06",
+      "occurrences": 2,
+      "affectedTests": ["TC-LOGIN-004", "TC-LOGIN-005"],
+      "resolved": true
+    },
+    {
+      "id": "ERR-006",
+      "pattern": "Target page, context or browser has been closed",
+      "context": "auto-tester.js - browser crash podczas testu, zabija cały proces",
+      "symptoms": ["page.waitForTimeout: Target page, context or browser has been closed", "Tester przestaje działać po crashu"],
+      "solution": "Dodano crash recovery w pętli testowej: wykrywa crash po message, próbuje odzyskać page z context.pages() lub tworzy nową, loguje się ponownie i kontynuuje testy.",
+      "fallback": "Jeśli recovery się nie uda - przerywa pętlę z logiem zamiast crashować cały proces",
+      "firstSeen": "2026-02-06",
+      "lastSeen": "2026-02-06",
+      "occurrences": 1,
+      "affectedTests": ["TC-LOGIN-005"],
+      "resolved": true
+    },
+    {
+      "id": "ERR-007",
+      "pattern": "Auto-tester szuka pola logowania na każdej stronie przy 'wpisz'/'zaloguj'",
+      "context": "runTestCase - matching kroków zbyt szeroki: 'wpisz' i 'zaloguj' ZAWSZE kierowały do formularza logowania, niezależnie od aktualnej strony",
+      "symptoms": ["Timeout waiting for 'Nazwa uzytkownika' na stronie dashboard/projects/register", "90% testów FAILED z tym samym komunikatem"],
+      "solution": "Przepisano logikę kroków: 1) 'Zaloguj się' = sprawdź czy zalogowany, jeśli tak - pomiń. 2) 'Wpisz X' = jeśli na /login → formularz logowania, jeśli na innej stronie → szukaj pola na aktualnej stronie. 3) 'Kliknij Zaloguj' → tylko na stronie /login. 4) Dodano obsługę wylogowania, URL z kroków, sprawdzanie widoczności tekstu.",
+      "fallback": null,
+      "firstSeen": "2026-02-06",
+      "lastSeen": "2026-02-06",
+      "occurrences": 12,
+      "affectedTests": ["TC-LOGIN-003", "TC-LOGIN-004", "TC-LOGIN-005", "TC-LOGIN-007", "TC-LOGIN-008", "TC-LOGIN-009", "TC-PROJ-001", "TC-PROJ-002", "TC-PROJ-003"],
+      "resolved": true
+    }
+  ]
+}

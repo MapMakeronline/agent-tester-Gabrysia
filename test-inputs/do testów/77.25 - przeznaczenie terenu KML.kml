@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+<Document id="root_doc">
+<Schema name="7725__przeznaczenie_terenu" id="7725__przeznaczenie_terenu">
+	<SimpleField name="id" type="float"></SimpleField>
+	<SimpleField name="przeznacze" type="string"></SimpleField>
+	<SimpleField name="hiluks" type="string"></SimpleField>
+	<SimpleField name="opis" type="string"></SimpleField>
+</Schema>
+<Folder><name>7725__przeznaczenie_terenu</name>
+  <Placemark>
+	<Style><LineStyle><color>ff0000ff</color></LineStyle><PolyStyle><fill>0</fill></PolyStyle></Style>
+	<ExtendedData><SchemaData schemaUrl="#7725__przeznaczenie_terenu">
+		<SimpleData name="id">1</SimpleData>
+		<SimpleData name="przeznacze">1U-P</SimpleData>
+		<SimpleData name="hiluks">U/P</SimpleData>
+		<SimpleData name="opis">teren usług lub produkcji</SimpleData>
+	</SchemaData></ExtendedData>
+      <MultiGeometry><Polygon><outerBoundaryIs><LinearRing><coordinates>19.1318940131671,51.1815362875255 19.1321910868586,51.1815946326239 19.1324715842701,51.1815601840506 19.1327860938299,51.1815654095848 19.1350597013452,51.1815941638475 19.1351027892421,51.1804907812762 19.1351447818673,51.1794154055511 19.1350027956977,51.1795333795353 19.1340273058366,51.1797173297336 19.1337914136766,51.180018703248 19.133482420851,51.1799230805936 19.1332695086993,51.1801293891255 19.1330930978528,51.1800611838457 19.1323195400385,51.1797620995891 19.1322351880753,51.180113806535 19.131901919776,51.1815033229999 19.1318940131671,51.1815362875255</coordinates></LinearRing></outerBoundaryIs></Polygon></MultiGeometry>
+  </Placemark>
+</Folder>
+</Document></kml>

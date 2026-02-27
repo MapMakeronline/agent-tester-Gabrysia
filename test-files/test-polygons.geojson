@@ -1,0 +1,37 @@
+{
+  "type": "FeatureCollection",
+  "name": "TestPolygons",
+  "crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "id": 1, "name": "Obszar A", "type": "residential", "area_ha": 12.5 },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [19.94, 50.06], [19.95, 50.06], [19.95, 50.07], [19.94, 50.07], [19.94, 50.06]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "id": 2, "name": "Obszar B", "type": "commercial", "area_ha": 8.3 },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [19.93, 50.055], [19.94, 50.055], [19.94, 50.065], [19.93, 50.065], [19.93, 50.055]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "id": 3, "name": "Obszar C", "type": "industrial", "area_ha": 15.0 },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [19.95, 50.05], [19.97, 50.05], [19.97, 50.06], [19.95, 50.06], [19.95, 50.05]
+        ]]
+      }
+    }
+  ]
+}

@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>Test Places</name>
+    <description>Przykładowe miejsca do testów importu KML</description>
+
+    <Style id="testStyle">
+      <IconStyle>
+        <color>ff0000ff</color>
+        <scale>1.0</scale>
+      </IconStyle>
+    </Style>
+
+    <Folder>
+      <name>Punkty testowe</name>
+
+      <Placemark>
+        <name>Kraków Rynek</name>
+        <description>Główny Rynek w Krakowie</description>
+        <styleUrl>#testStyle</styleUrl>
+        <Point>
+          <coordinates>19.9373,50.0619,0</coordinates>
+        </Point>
+      </Placemark>
+
+      <Placemark>
+        <name>Wawel</name>
+        <description>Zamek Królewski na Wawelu</description>
+        <styleUrl>#testStyle</styleUrl>
+        <Point>
+          <coordinates>19.9354,50.0540,0</coordinates>
+        </Point>
+      </Placemark>
+
+      <Placemark>
+        <name>Kazimierz</name>
+        <description>Dzielnica Kazimierz</description>
+        <styleUrl>#testStyle</styleUrl>
+        <Point>
+          <coordinates>19.9460,50.0510,0</coordinates>
+        </Point>
+      </Placemark>
+
+      <Placemark>
+        <name>Nowa Huta</name>
+        <description>Dzielnica Nowa Huta</description>
+        <styleUrl>#testStyle</styleUrl>
+        <Point>
+          <coordinates>20.0380,50.0720,0</coordinates>
+        </Point>
+      </Placemark>
+
+    </Folder>
+
+    <Folder>
+      <name>Obszary</name>
+
+      <Placemark>
+        <name>Park Jordana</name>
+        <description>Park im. Henryka Jordana</description>
+        <Polygon>
+          <outerBoundaryIs>
+            <LinearRing>
+              <coordinates>
+                19.9200,50.0580,0
+                19.9250,50.0580,0
+                19.9250,50.0620,0
+                19.9200,50.0620,0
+                19.9200,50.0580,0
+              </coordinates>
+            </LinearRing>
+          </outerBoundaryIs>
+        </Polygon>
+      </Placemark>
+
+    </Folder>
+  </Document>
+</kml>

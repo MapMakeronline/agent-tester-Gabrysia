@@ -1,0 +1,66 @@
+{
+  "version": 1,
+  "metadata": {
+    "testId": "TC-LOGIN-001",
+    "category": "LOGOWANIE",
+    "testName": "Logowanie poprawnymi danymi",
+    "recordedAt": "2026-02-12T14:30:00.000Z",
+    "recordedFrom": "https://universe-mapmaker.web.app/login",
+    "source": "user-recording-cdp",
+    "duration": 25
+  },
+  "preconditions": {
+    "loggedIn": false,
+    "startUrl": "https://universe-mapmaker.web.app/login"
+  },
+  "steps": [
+    {
+      "index": 1,
+      "action": "type",
+      "description": "Wpisz 'Mestwin' w pole 'username'",
+      "selectors": [
+        {
+          "strategy": "name",
+          "value": "username"
+        },
+        {
+          "strategy": "css-id",
+          "value": "#username"
+        }
+      ],
+      "value": "Mestwin"
+    },
+    {
+      "index": 2,
+      "action": "type",
+      "description": "Wpisz 'Kaktus,1' w pole 'password'",
+      "selectors": [
+        {
+          "strategy": "name",
+          "value": "password"
+        },
+        {
+          "strategy": "css-id",
+          "value": "#password"
+        }
+      ],
+      "value": "Kaktus,1"
+    },
+    {
+      "index": 3,
+      "action": "click",
+      "description": "Kliknij przycisk 'Zaloguj sie'",
+      "selectors": [
+        {
+          "strategy": "role",
+          "role": "button",
+          "name": "Zaloguj się"
+        },
+        {
+          "strategy": "text",
+          "value": "Zaloguj się"
+        }
+      ]
+    }
+  ]
+}

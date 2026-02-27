@@ -1,0 +1,74 @@
+{
+  "version": 1,
+  "metadata": {
+    "testId": "TC-TABLE-006",
+    "category": "TABELA ATRYBUTÓW",
+    "testName": "Edycja wartości w komórce",
+    "recordedAt": "2026-02-12T15:10:00.000Z",
+    "recordedFrom": "https://universe-mapmaker.web.app/projects/TESTAGENT",
+    "source": "user-recording-cdp",
+    "duration": 35
+  },
+  "preconditions": {
+    "loggedIn": true,
+    "startUrl": "https://universe-mapmaker.web.app/projects/TESTAGENT"
+  },
+  "steps": [
+    {
+      "index": 1,
+      "action": "navigate",
+      "description": "Przejdz do projektu TESTAGENT",
+      "selectors": [],
+      "url": "/projects/TESTAGENT"
+    },
+    {
+      "index": 2,
+      "action": "click",
+      "description": "Kliknij ikone tabeli atrybutow przy warstwie (ikona tabeli/grid w panelu warstw)",
+      "selectors": [
+        {
+          "strategy": "css-class",
+          "value": "MuiSvgIcon",
+          "lowConfidence": true
+        }
+      ],
+      "waitBefore": 1000
+    },
+    {
+      "index": 3,
+      "action": "dblclick",
+      "description": "Dwuklik na edytowalna komorke w tabeli atrybutow (MuiDataGrid-cell--editable)",
+      "selectors": [
+        {
+          "strategy": "role",
+          "role": "gridcell"
+        },
+        {
+          "strategy": "css-class",
+          "value": "MuiDataGrid-cell--editable",
+          "lowConfidence": true
+        }
+      ],
+      "waitBefore": 1000
+    },
+    {
+      "index": 4,
+      "action": "type",
+      "description": "Wpisz nowa wartosc w pole edycji komorki",
+      "selectors": [
+        {
+          "strategy": "css-class",
+          "value": "MuiInputBase-input"
+        }
+      ],
+      "value": "5"
+    },
+    {
+      "index": 5,
+      "action": "press_key",
+      "description": "Nacisnij Enter aby zatwierdzic edycje",
+      "selectors": [],
+      "key": "Enter"
+    }
+  ]
+}

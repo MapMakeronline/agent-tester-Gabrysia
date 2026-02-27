@@ -1,0 +1,15 @@
+{
+  "version": 2,
+  "lastUpdate": "2026-02-04",
+  "bugs": [
+    {"code": "TC-PROJ-003", "cat": "PROJ", "first": "2026-01-27", "last": "2026-02-03"},
+    {"code": "TC-PROJ-005", "cat": "PROJ", "first": "2026-01-27", "last": "2026-02-03"},
+    {"code": "TC-LOGIN-008", "cat": "LOGIN", "first": "2026-01-27", "last": "2026-02-04"},
+    {"code": "TC-PROJ-004", "cat": "PROJ", "first": "2026-01-27", "last": "2026-02-04"},
+    {"code": "TC-PROJ-002", "cat": "PROJ", "first": "2026-01-27", "last": "2026-02-04"},
+    {"code": "TC-NAV-004", "cat": "NAV", "first": "2026-01-28", "last": "2026-02-03"},
+    {"code": "TC-NAV-007", "cat": "NAV", "first": "2026-01-28", "last": "2026-01-28"},
+    {"code": "TC-IMPORT-009", "cat": "IMPORT", "first": "2026-01-29", "last": "2026-01-29"},
+    {"code": "TC-IMPORT-012", "cat": "IMPORT", "first": "2026-02-03", "last": "2026-02-04"}
+  ]
+}

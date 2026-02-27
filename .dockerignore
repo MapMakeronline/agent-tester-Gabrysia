@@ -1,0 +1,10 @@
+node_modules
+*.md
+docs/
+bin/
+test-files/
+test-inputs/
+lib/
+AGENT.md
+memory.md
+.git

@@ -1,0 +1,5 @@
+{
+  "enabled": false,
+  "webhookUrl": "https://script.google.com/macros/s/TWOJ_WEBHOOK_ID/exec",
+  "_info": "Ustaw enabled:true i wklej URL webhooka z Google Apps Script (patrz INSTALL.md krok 4)"
+}

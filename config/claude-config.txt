@@ -1,0 +1,32 @@
+# Claude Code - Informacje Konfiguracyjne
+# ==========================================
+
+## Lokalizacja konfiguracji
+Katalog konfiguracyjny: C:\Users\Dom\.claude\
+
+## Ważne ścieżki
+- Projekty: C:\Users\Dom\.claude\projects\
+- Historia plików: C:\Users\Dom\.claude\file-history\
+- Pamięć (memory): C:\Users\Dom\.claude\projects\C--Users-Dom\memory\
+
+## Dostęp do API
+- Konsola Anthropic: https://console.anthropic.com/
+- Dokumentacja API: https://docs.anthropic.com/
+
+## Komendy Claude Code
+- claude --help          : Pomoc
+- claude --version       : Wersja
+- claude config          : Ustawienia
+- /help                  : Pomoc w sesji
+
+## Przydatne linki
+- Strona główna: https://claude.ai/
+- GitHub (zgłaszanie błędów): https://github.com/anthropics/claude-code/issues
+
+## Uwagi bezpieczeństwa
+- NIGDY nie zapisuj kluczy API w plikach tekstowych
+- Używaj zmiennych środowiskowych dla kluczy: ANTHROPIC_API_KEY
+- Rozważ użycie menedżera haseł dla wrażliwych danych
+
+## Model
+Aktualny model: Claude Opus 4.5 (claude-opus-4-5-20251101)
