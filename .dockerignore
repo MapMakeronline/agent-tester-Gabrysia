@@ -1,10 +1,35 @@
-node_modules
+node_modules/
+.git/
+
+# Docs & markdown
 *.md
 docs/
+memory.md
+
+# Dev tools (Windows only)
 bin/
+*.bat
+*.ps1
+
+# Test input files (large, not needed at runtime)
 test-files/
 test-inputs/
-lib/
-AGENT.md
-memory.md
-.git
+
+# Plugin (Claude Code only)
+plugin/
+
+# K8s manifests (not needed in image)
+k8s/
+
+# Secrets templates (not actual secrets)
+config/*.template.*
+
+# Generated data (recreated at runtime)
+data/
+monitor/tests-data.js
+monitor/stop-signal.txt
+
+# Playwright artifacts
+playwright-report/
+test-results/
+e2e/generated/*.gen.spec.ts
