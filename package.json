@@ -1,16 +1,19 @@
 {
-  "name": "tester",
+  "name": "e2e-tester",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Autonomiczny agent testowy dla Universe MapMaker",
+  "main": "scripts/server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node scripts/server.js",
+    "test": "npx playwright test",
+    "test:login": "npx playwright test --grep TC-LOGIN",
+    "pipeline": "node scripts/test-pipeline.js",
+    "pipeline:login": "node scripts/test-pipeline.js --category=LOGIN",
+    "run": "node scripts/run-tests.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "playwright": "^1.58.1"
+    "@playwright/test": "^1.50.0",
+    "playwright": "^1.50.0"
   }
 }

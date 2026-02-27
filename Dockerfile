@@ -2,33 +2,36 @@ FROM mcr.microsoft.com/playwright:v1.50.0-noble
 
 WORKDIR /app
 
-# 1. MUIFrontend: package.json + playwright config + e2e testy
-COPY MUIFrontend/package.json MUIFrontend/package-lock.json ./
+# 1. Zależności (cache layer)
+COPY package.json package-lock.json ./
 RUN npm ci --ignore-scripts
 RUN npx playwright install chromium
 
-COPY MUIFrontend/playwright.config.ts ./
-COPY MUIFrontend/e2e/ ./e2e/
-COPY MUIFrontend/tsconfig.json ./
+# 2. Playwright config (e2e/playwright.config.ts -> /app root)
+COPY e2e/playwright.config.ts ./playwright.config.ts
+COPY e2e/ ./e2e/
 
-# 2. Tester: skrypty, config, monitor, data
-COPY tester/scripts/ ./scripts/
-COPY tester/config/ ./config/
-COPY tester/monitor/ ./monitor/
-COPY tester/data/ ./data/
+# 3. Tester: skrypty, config, monitor, lib
+COPY scripts/ ./scripts/
+COPY config/error-solutions.json config/known-bugs.json ./config/
+COPY monitor/index.html monitor/favicon.svg ./monitor/
+COPY lib/ ./lib/
 
-# 3. Tester dependencies (playwright lib)
-COPY tester/package.json ./tester-package.json
-RUN cd /tmp && cp /app/tester-package.json package.json && npm install && cp -r node_modules/playwright /app/node_modules/ 2>/dev/null || true
+# 4. Pliki runtime (puste lub domyslne)
+RUN mkdir -p data config \
+    && echo '{}' > config/sheet-config.json \
+    && echo '{}' > config/webhook-config.json \
+    && echo '{}' > config/sheets-service-account.json \
+    && echo '{}' > data/remaining-tests.json \
+    && echo '{}' > data/session-state.json
 
-# 4. Env vars
+# 5. Env vars
 # MUIFRONTEND=/app bo e2e/ i playwright.config.ts sa w /app/
 ENV MUIFRONTEND=/app
 ENV HEADLESS=1
 ENV NODE_ENV=production
 EXPOSE 8081
 
-# Healthcheck
 HEALTHCHECK --interval=30s --timeout=5s \
   CMD node -e "require('http').get('http://localhost:8081/api/status',r=>{process.exit(r.statusCode===200?0:1)}).on('error',()=>process.exit(1))"
 
