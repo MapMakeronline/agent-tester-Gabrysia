@@ -29,9 +29,8 @@ export const test = base.extend({
       const storageState = fs.existsSync(STORAGE_STATE_PATH) ? STORAGE_STATE_PATH : undefined;
       context = await browser.newContext({ storageState });
     } else {
-      // Local mode: reuse existing CDP context (preserves logged-in session)
-      const contexts = browser.contexts();
-      context = contexts[0] || await browser.newContext();
+      // Local mode: always create new context to avoid grabbing wrong tab (e.g. GitHub)
+      context = await browser.newContext();
     }
     await use(context);
     if (IS_HEADLESS) {

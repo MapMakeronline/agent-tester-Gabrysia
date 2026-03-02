@@ -1,21 +1,12 @@
 import { test, expect } from './fixtures';
+import { ensureLoggedIn } from './helpers/auth';
 
 test.describe('TABELA ATRYBUTOW', () => {
   // ---------------------------------------------------------------------------
   // Helper: login, navigate to TESTAGENT, open attribute table for a layer
   // ---------------------------------------------------------------------------
   async function openAttributeTable(page: import('@playwright/test').Page, layerName = 'Punkty testowe') {
-    await page.goto('/login');
-    const usernameInput = page.getByRole('textbox', { name: 'Nazwa użytkownika' });
-    await usernameInput.waitFor({ state: 'visible', timeout: 15_000 });
-    await usernameInput.fill('Mestwin');
-    await page.getByRole('textbox', { name: 'Hasło' }).fill('Kaktus,1');
-    await page.getByRole('button', { name: 'Zaloguj się', exact: true }).click();
-    try {
-      await page.waitForURL(/\/(dashboard|projects)/, { timeout: 15_000 });
-    } catch {
-      // Login may be slow
-    }
+    await ensureLoggedIn(page);
     await page.goto('/projects/TESTAGENT');
     try {
       await page.waitForSelector('[role="treeitem"]', { timeout: 15_000 });

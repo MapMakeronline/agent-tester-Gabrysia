@@ -18,14 +18,14 @@ export async function logout(page: Page) {
 }
 
 export async function ensureLoggedIn(page: Page) {
-  // Navigate to a protected route to check auth status
-  await page.goto('/projects/my');
-  await page.waitForLoadState('domcontentloaded');
+  // Navigate to a protected route and wait for React routing to settle.
+  // networkidle ensures the SPA has finished auth checks and any redirect.
+  await page.goto('/projects/my', { waitUntil: 'networkidle' });
   const url = page.url();
-  // If still on /projects/my — user is authenticated
-  if (url.includes('/projects/my')) {
+  // If we're NOT on the login page — user is authenticated
+  if (!url.includes('/login')) {
     return;
   }
-  // Otherwise we got redirected to login — need to authenticate
+  // We got redirected to login — need to authenticate
   await login(page);
 }

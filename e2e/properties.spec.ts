@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures';
+import { ensureLoggedIn } from './helpers/auth';
 import * as path from 'path';
 
 test.describe('WŁAŚCIWOŚCI', () => {
@@ -6,18 +7,7 @@ test.describe('WŁAŚCIWOŚCI', () => {
   // Helper: login, navigate to TESTAGENT, double-click layer to open properties
   // ---------------------------------------------------------------------------
   async function openLayerProperties(page: import('@playwright/test').Page, layerName = 'Punkty testowe') {
-    await page.goto('/login');
-    // Use role-based selectors for reliability
-    const usernameInput = page.getByRole('textbox', { name: 'Nazwa użytkownika' });
-    await usernameInput.waitFor({ state: 'visible', timeout: 15_000 });
-    await usernameInput.fill('Mestwin');
-    await page.getByRole('textbox', { name: 'Hasło' }).fill('Kaktus,1');
-    await page.getByRole('button', { name: 'Zaloguj się', exact: true }).click();
-    try {
-      await page.waitForURL(/\/(dashboard|projects)/, { timeout: 15_000 });
-    } catch {
-      // Login may be slow - navigate directly
-    }
+    await ensureLoggedIn(page);
     await page.goto('/projects/TESTAGENT');
     try {
       await page.waitForSelector('[role="treeitem"]', { timeout: 15_000 });
