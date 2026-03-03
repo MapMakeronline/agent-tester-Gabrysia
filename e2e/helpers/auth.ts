@@ -1,7 +1,7 @@
 import { Page } from '@playwright/test';
 
-const TEST_USER = process.env.TEST_USER || 'Mestwin';
-const TEST_PASS = process.env.TEST_PASS || 'Kaktus,1';
+const TEST_USER = process.env.TEST_USER || 'tester';
+const TEST_PASS = process.env.TEST_PASS || 'testowanie';
 
 export async function login(page: Page) {
   await page.goto('/login');

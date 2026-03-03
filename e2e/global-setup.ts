@@ -6,8 +6,8 @@ import { chromium } from '@playwright/test';
 const IS_HEADLESS = process.env.HEADLESS === '1';
 const CDP_URL = process.env.CDP_URL || 'http://127.0.0.1:9222';
 const BASE_URL = process.env.BASE_URL || 'https://universe-mapmaker.web.app';
-const MAPMAKER_USER = process.env.MAPMAKER_USER || process.env.TEST_USER || 'Mestwin';
-const MAPMAKER_PASS = process.env.MAPMAKER_PASS || process.env.TEST_PASS || 'Kaktus,1';
+const MAPMAKER_USER = process.env.MAPMAKER_USER || process.env.TEST_USER || 'tester';
+const MAPMAKER_PASS = process.env.MAPMAKER_PASS || process.env.TEST_PASS || 'testowanie';
 
 const STORAGE_STATE_PATH = path.resolve(__dirname, '..', 'data', 'auth-storage-state.json');
 
