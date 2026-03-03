@@ -16,8 +16,8 @@ import * as path from 'path';
  */
 
 const PROJECT = 'TestzWarstwami';
-const DEFAULT_LAYER = 'entities';
-const LINE_LAYER = 'linie_zab';
+const DEFAULT_LAYER = '03_nazwa';
+const LINE_LAYER = '00_OZNACZENIA_LIN_wyc';
 
 test.describe('WŁAŚCIWOŚCI', () => {
   // ---------------------------------------------------------------------------
@@ -42,8 +42,25 @@ test.describe('WŁAŚCIWOŚCI', () => {
 
     // Wait for tree to render (use p[title] for exact match — handles "linie_zab (1:5000 - 1:100)")
     const layerLocator = () => page.locator(`[role="treeitem"] p[title^="${layerName}"]`);
+    const tree = page.getByRole('tree');
+
+    // Helper: scroll tree to find layer (may be below viewport in headless mode)
+    async function scrollToLayer(): Promise<boolean> {
+      // First check if already visible
+      if (await layerLocator().first().isVisible({ timeout: 3_000 }).catch(() => false)) return true;
+      // Scroll tree down in steps to find the layer
+      for (let i = 0; i < 5; i++) {
+        await tree.evaluate(el => el.scrollBy(0, 300));
+        await page.waitForTimeout(500);
+        if (await layerLocator().first().isVisible({ timeout: 1_000 }).catch(() => false)) return true;
+      }
+      return false;
+    }
+
     try {
-      await expect(layerLocator().first()).toBeVisible({ timeout: 15_000 });
+      await expect(tree).toBeVisible({ timeout: 15_000 });
+      await scrollToLayer();
+      await expect(layerLocator().first()).toBeVisible({ timeout: 5_000 });
     } catch {
       await page.reload();
       await page.waitForLoadState('networkidle', { timeout: 20_000 }).catch(() => {});
@@ -55,7 +72,9 @@ test.describe('WŁAŚCIWOŚCI', () => {
         return false;
       });
       if (reopened) await page.waitForTimeout(1_000);
-      await expect(layerLocator().first()).toBeVisible({ timeout: 30_000 });
+      await expect(tree).toBeVisible({ timeout: 15_000 });
+      await scrollToLayer();
+      await expect(layerLocator().first()).toBeVisible({ timeout: 10_000 });
     }
 
     // 2s pause before click (Krzysztof fix for timing)
@@ -234,14 +253,19 @@ test.describe('WŁAŚCIWOŚCI', () => {
     const dialog = page.locator('[role="dialog"]').last();
     await expect(dialog).toBeVisible({ timeout: 5_000 });
 
-    // Look for color input (async, may take time to load)
-    const colorInput = dialog.locator('input[type="color"], input[value^="#"]').first();
-    const colorVisible = await colorInput.isVisible({ timeout: 5_000 }).catch(() => false);
-
-    if (colorVisible) {
-      const originalColor = await colorInput.inputValue();
-      expect(originalColor).toMatch(/^#[0-9a-fA-F]{3,8}$/);
+    // Look for color textbox with hex value (e.g. #ff0000 for fill color)
+    const textboxes = dialog.getByRole('textbox');
+    const count = await textboxes.count();
+    let fillColorFound = false;
+    for (let i = 0; i < count; i++) {
+      const val = await textboxes.nth(i).inputValue();
+      if (/^#[0-9a-fA-F]{3,8}$/.test(val)) {
+        fillColorFound = true;
+        expect(val).toMatch(/^#[0-9a-fA-F]{3,8}$/);
+        break;
+      }
     }
+    expect(fillColorFound).toBe(true);
 
     // Close without saving
     await page.getByRole('button', { name: 'Zamknij', exact: true }).last().click();
