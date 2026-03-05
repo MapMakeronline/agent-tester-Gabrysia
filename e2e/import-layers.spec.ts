@@ -7,9 +7,19 @@ import * as fs from 'fs';
  * Import tests based on Franek's verified selectors (2026-03-03).
  * TC-001 through TC-008 require real test files — auto-skip if not found.
  * TEST_FILES_DIR configurable via env var or defaults to ~/Desktop/do testów
+ *
+ * Navigation: uses URL-based /projects/TestzWarstwami (same as properties/layer-management)
+ * because tester account may not see "Otwórz" button on project cards.
  */
+const PROJECT = 'TestzWarstwami';
 const TEST_FILES_DIR = process.env.TEST_FILES_DIR
   || path.resolve(process.env.USERPROFILE || process.env.HOME || '.', 'Desktop', 'do testów');
+
+/** Check if a test file exists — returns resolved path or null */
+function resolveTestFile(filePath: string): string | null {
+  const resolved = path.resolve(TEST_FILES_DIR, filePath);
+  return fs.existsSync(resolved) ? resolved : null;
+}
 
 /** Helper: open "Importuj warstwę" dialog and verify it's visible */
 async function openImportDialog(page: import('@playwright/test').Page) {
@@ -53,57 +63,77 @@ async function clickImportAndWait(
   await expect(dialog).toBeHidden({ timeout: timeoutMs });
 }
 
-/** Skip test if file doesn't exist on this machine */
-function requireFile(filePath: string): string {
-  const resolved = path.resolve(TEST_FILES_DIR, filePath);
-  if (!fs.existsSync(resolved)) {
-    test.skip(true, `Brak pliku testowego: ${filePath}`);
-  }
-  return resolved;
-}
+/** Navigate to project map view with side panel open and import button visible */
+async function openProjectMapView(page: import('@playwright/test').Page) {
+  await ensureLoggedIn(page);
+  await page.goto(`/projects/${PROJECT}`, { waitUntil: 'domcontentloaded' });
+  await page.waitForLoadState('networkidle', { timeout: 20_000 }).catch(() => {});
+  await page.waitForTimeout(1_000);
 
-test.describe('IMPORT WARSTW', () => {
-  test.beforeEach(async ({ page }) => {
-    await ensureLoggedIn(page);
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1000);
+  // Ensure side panel is open
+  const panelOpened = await page.evaluate(() => {
+    const btn = document.querySelector('[aria-label="Otwórz panel boczny"]');
+    if (btn) { (btn as HTMLElement).click(); return true; }
+    return false;
+  });
+  if (panelOpened) await page.waitForTimeout(1_000);
 
-    // Click "Otwórz" on first project card to enter map view
-    const openBtn = page.locator('button:has-text("Otwórz")').first();
-    await openBtn.waitFor({ state: 'visible', timeout: 10_000 });
-    await openBtn.click();
-
-    // Wait for project map view (sidebar with import button)
+  // Wait for import button in side panel
+  try {
+    await page.locator('[aria-label="Importuj warstwę"]').waitFor({
+      state: 'visible',
+      timeout: 15_000,
+    });
+  } catch {
+    // Retry: reload and re-open panel
+    await page.reload();
+    await page.waitForLoadState('networkidle', { timeout: 20_000 }).catch(() => {});
+    await page.waitForTimeout(1_000);
+    const reopened = await page.evaluate(() => {
+      const btn = document.querySelector('[aria-label="Otwórz panel boczny"]');
+      if (btn) { (btn as HTMLElement).click(); return true; }
+      return false;
+    });
+    if (reopened) await page.waitForTimeout(1_000);
     await page.locator('[aria-label="Importuj warstwę"]').waitFor({
       state: 'visible',
       timeout: 25_000,
     });
-    await page.waitForTimeout(2000);
+  }
+  await page.waitForTimeout(1_000);
+}
+
+test.describe('IMPORT WARSTW', () => {
+  test.beforeEach(async ({ page }) => {
+    await openProjectMapView(page);
   });
 
   // ==================== FILE IMPORT TESTS ====================
 
   test('TC-IMPORT-001: Import GML', async ({ page }) => {
     test.setTimeout(120_000);
-    const filePath = requireFile('GML_20.15_aktualizowany.gml');
+    const filePath = resolveTestFile('GML_20.15_aktualizowany.gml');
+    test.skip(!filePath, 'Brak pliku testowego: GML_20.15_aktualizowany.gml');
     const dialog = await openImportDialog(page);
-    await uploadFileToDialog(page, filePath, 'TestGML');
+    await uploadFileToDialog(page, filePath!, 'TestGML');
     await clickImportAndWait(page, dialog, 90_000);
   });
 
   test('TC-IMPORT-002: Import GeoJSON', async ({ page }) => {
     test.setTimeout(90_000);
-    const filePath = requireFile('77.25 - przeznaczenie terenu Geojson.geojson');
+    const filePath = resolveTestFile('77.25 - przeznaczenie terenu Geojson.geojson');
+    test.skip(!filePath, 'Brak pliku testowego: 77.25 - przeznaczenie terenu Geojson.geojson');
     const dialog = await openImportDialog(page);
-    await uploadFileToDialog(page, filePath, 'TestGeoJSON');
+    await uploadFileToDialog(page, filePath!, 'TestGeoJSON');
     await clickImportAndWait(page, dialog, 60_000);
   });
 
   test('TC-IMPORT-003: Import Shapefile', async ({ page }) => {
     test.setTimeout(90_000);
-    const filePath = requireFile('77.25 - przeznaczenie terenu SHP .zip');
+    const filePath = resolveTestFile('77.25 - przeznaczenie terenu SHP .zip');
+    test.skip(!filePath, 'Brak pliku testowego: 77.25 - przeznaczenie terenu SHP .zip');
     const dialog = await openImportDialog(page);
-    await uploadFileToDialog(page, filePath, 'TestSHP');
+    await uploadFileToDialog(page, filePath!, 'TestSHP');
 
     const importSubmitBtn = dialog.locator('button:has-text("Importuj")').last();
     await importSubmitBtn.click();
@@ -123,25 +153,28 @@ test.describe('IMPORT WARSTW', () => {
 
   test('TC-IMPORT-004: Import GeoPackage', async ({ page }) => {
     test.setTimeout(300_000);
-    const filePath = requireFile('OZNACZENIA Z MPZP_RAZEM_wyciete.gpkg');
+    const filePath = resolveTestFile('OZNACZENIA Z MPZP_RAZEM_wyciete.gpkg');
+    test.skip(!filePath, 'Brak pliku testowego: OZNACZENIA Z MPZP_RAZEM_wyciete.gpkg');
     const dialog = await openImportDialog(page);
-    await uploadFileToDialog(page, filePath, 'TestGPKG');
+    await uploadFileToDialog(page, filePath!, 'TestGPKG');
     await clickImportAndWait(page, dialog, 240_000);
   });
 
   test('TC-IMPORT-005: Import KML/KMZ', async ({ page }) => {
     test.setTimeout(90_000);
-    const filePath = requireFile('77.25 - przeznaczenie terenu KML.kml');
+    const filePath = resolveTestFile('77.25 - przeznaczenie terenu KML.kml');
+    test.skip(!filePath, 'Brak pliku testowego: 77.25 - przeznaczenie terenu KML.kml');
     const dialog = await openImportDialog(page);
-    await uploadFileToDialog(page, filePath, 'TestKML');
+    await uploadFileToDialog(page, filePath!, 'TestKML');
     await clickImportAndWait(page, dialog, 60_000);
   });
 
   test('TC-IMPORT-006: Import CSV', async ({ page }) => {
     test.setTimeout(120_000);
-    const filePath = requireFile('77.25 - przeznaczenie terenu CSV.csv');
+    const filePath = resolveTestFile('77.25 - przeznaczenie terenu CSV.csv');
+    test.skip(!filePath, 'Brak pliku testowego: 77.25 - przeznaczenie terenu CSV.csv');
     const dialog = await openImportDialog(page);
-    await uploadFileToDialog(page, filePath, 'TestCSV');
+    await uploadFileToDialog(page, filePath!, 'TestCSV');
 
     const importSubmitBtn = dialog.locator('button:has-text("Importuj")').last();
     const submitVisible = await importSubmitBtn.isVisible().catch(() => false);
@@ -165,9 +198,10 @@ test.describe('IMPORT WARSTW', () => {
 
   test('TC-IMPORT-007: Import DXF', async ({ page }) => {
     test.setTimeout(120_000);
-    const filePath = requireFile('014 Plan fotowoltaika Florentynow Mariampol zal 1 DXF .zip');
+    const filePath = resolveTestFile('014 Plan fotowoltaika Florentynow Mariampol zal 1 DXF .zip');
+    test.skip(!filePath, 'Brak pliku testowego: 014 Plan fotowoltaika Florentynow Mariampol zal 1 DXF .zip');
     const dialog = await openImportDialog(page);
-    await uploadFileToDialog(page, filePath, 'TestDXF');
+    await uploadFileToDialog(page, filePath!, 'TestDXF');
 
     const importSubmitBtn = dialog.locator('button:has-text("Importuj")').last();
     await importSubmitBtn.click();
@@ -186,9 +220,10 @@ test.describe('IMPORT WARSTW', () => {
 
   test('TC-IMPORT-008: Import TopoJSON', async ({ page }) => {
     test.setTimeout(120_000);
-    const filePath = requireFile('77.25 - przeznaczenie. topojejson.zip');
+    const filePath = resolveTestFile('77.25 - przeznaczenie. topojejson.zip');
+    test.skip(!filePath, 'Brak pliku testowego: 77.25 - przeznaczenie. topojejson.zip');
     const dialog = await openImportDialog(page);
-    await uploadFileToDialog(page, filePath, 'TestTopoJSON');
+    await uploadFileToDialog(page, filePath!, 'TestTopoJSON');
 
     const importSubmitBtn = dialog.locator('button:has-text("Importuj")').last();
     await importSubmitBtn.click();
