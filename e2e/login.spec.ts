@@ -58,12 +58,26 @@ test.describe('LOGOWANIE', () => {
   });
 
   // TC-LOGIN-006: Rejestracja nowego użytkownika
-  // Skip in CI/K8s — creates real accounts in production DB on every run
   test('TC-LOGIN-006: Rejestracja nowego użytkownika', async ({ page }) => {
-    if (process.env.HEADLESS === '1') test.skip(true, 'Skipped in CI/K8s — creates real DB entries on each run');
     await page.goto(`${BASE_URL}/register`);
     const ts = Date.now().toString().slice(-6);
     const username = `TestUser${ts}`;
+
+    // In CI/K8s: intercept registration POST to avoid creating real users in production DB.
+    // Test still verifies full UI flow (form fill → submit → success screen).
+    if (process.env.HEADLESS === '1') {
+      await page.route('https://api.universemapmaker.online/**', async (route) => {
+        if (route.request().method() === 'POST') {
+          await route.fulfill({
+            status: 201,
+            contentType: 'application/json',
+            body: JSON.stringify({ id: 99999, username, email: `${username}@test.com` }),
+          });
+        } else {
+          await route.continue();
+        }
+      });
+    }
 
     // Sprawdź widoczność pól
     await expect(page.getByRole('textbox', { name: 'Imię' })).toBeVisible({ timeout: 10_000 });
@@ -114,9 +128,7 @@ test.describe('LOGOWANIE', () => {
   });
 
   // TC-LOGIN-009: Zmiana hasła użytkownika
-  // Skip in CI/K8s — risk of leaving 'tester' account with wrong password if test fails mid-run
   test('TC-LOGIN-009: Zmiana hasła użytkownika', async ({ page }) => {
-    if (process.env.HEADLESS === '1') test.skip(true, 'Skipped in CI/K8s — risk of account lockout if test fails mid-run');
     // Logowanie jako tester
     await page.goto(`${BASE_URL}/login`);
     await page.getByRole('textbox', { name: /nazwa użytkownika/i }).fill('tester');
@@ -128,19 +140,27 @@ test.describe('LOGOWANIE', () => {
     await page.goto(`${BASE_URL}/settings`);
     await expect(page.getByRole('heading', { name: 'Zmień hasło' })).toBeVisible({ timeout: 10_000 });
 
-    // Zmień hasło na tymczasowe
-    await page.getByRole('textbox', { name: 'Aktualne hasło' }).fill('testowanie');
-    await page.getByRole('textbox', { name: 'Nowe hasło' }).fill('testowanie2');
-    await page.getByRole('textbox', { name: 'Potwierdź hasło' }).fill('testowanie2');
-    await page.getByRole('button', { name: 'Zmień hasło' }).click();
-    await expect(page.getByRole('alert')).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText(/hasło zostało pomyślnie zmienione/i)).toBeVisible();
-
-    // Przywróć oryginalne hasło (cleanup)
-    await page.getByRole('textbox', { name: 'Aktualne hasło' }).fill('testowanie2');
-    await page.getByRole('textbox', { name: 'Nowe hasło' }).fill('testowanie');
-    await page.getByRole('textbox', { name: 'Potwierdź hasło' }).fill('testowanie');
-    await page.getByRole('button', { name: 'Zmień hasło' }).click();
-    await expect(page.getByText(/hasło zostało pomyślnie zmienione/i)).toBeVisible({ timeout: 10_000 });
+    try {
+      // Zmień hasło na tymczasowe
+      await page.getByRole('textbox', { name: 'Aktualne hasło' }).fill('testowanie');
+      await page.getByRole('textbox', { name: 'Nowe hasło' }).fill('testowanie2');
+      await page.getByRole('textbox', { name: 'Potwierdź hasło' }).fill('testowanie2');
+      await page.getByRole('button', { name: 'Zmień hasło' }).click();
+      await expect(page.getByRole('alert')).toBeVisible({ timeout: 10_000 });
+      await expect(page.getByText(/hasło zostało pomyślnie zmienione/i)).toBeVisible();
+    } finally {
+      // Przywróć oryginalne hasło — zawsze, nawet gdy asercje wyżej failują.
+      // Zapobiega lockowaniu konta tester w przypadku błędu w połowie testu.
+      try {
+        await page.goto(`${BASE_URL}/settings`);
+        await page.getByRole('textbox', { name: 'Aktualne hasło' }).fill('testowanie2');
+        await page.getByRole('textbox', { name: 'Nowe hasło' }).fill('testowanie');
+        await page.getByRole('textbox', { name: 'Potwierdź hasło' }).fill('testowanie');
+        await page.getByRole('button', { name: 'Zmień hasło' }).click();
+        await page.waitForTimeout(2_000);
+      } catch {
+        // Cleanup failed — konto tester może wymagać ręcznej naprawy hasła
+      }
+    }
   });
 });
