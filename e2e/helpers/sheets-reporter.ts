@@ -27,15 +27,8 @@ interface TestEntry {
 
 const TC_ID_REGEX = /^(TC-\w+-\d+)/;
 
-const AGENT_ROOT = path.resolve(
-  __dirname,
-  '..',
-  '..',
-  '..',
-  '.claude',
-  'agents',
-  'tester',
-);
+// __dirname = e2e/helpers → up 2 levels = tester root (works locally and in K8s /app)
+const AGENT_ROOT = path.resolve(__dirname, '..', '..');
 
 const TESTS_DATA_PATH = path.join(AGENT_ROOT, 'monitor', 'tests-data.js');
 

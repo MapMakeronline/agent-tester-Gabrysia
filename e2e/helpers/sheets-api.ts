@@ -14,13 +14,13 @@ import * as path from 'path';
 
 // ==================== CONFIG ====================
 
-const SA_PATH = process.env.SHEETS_SA_PATH || path.resolve(
-  __dirname, '..', '..', '..', '.claude', 'agents', 'tester', 'config', 'sheets-service-account.json',
-);
+// __dirname = e2e/helpers → up 2 levels = tester root (works locally and in K8s /app)
+const AGENT_ROOT = path.resolve(__dirname, '..', '..');
 
-const SHEET_CONFIG_PATH = path.resolve(
-  __dirname, '..', '..', '..', '.claude', 'agents', 'tester', 'config', 'sheet-config.json',
-);
+const SA_PATH = process.env.SHEETS_SA_PATH ||
+  path.resolve(AGENT_ROOT, 'config', 'sheets-service-account.json');
+
+const SHEET_CONFIG_PATH = path.resolve(AGENT_ROOT, 'config', 'sheet-config.json');
 
 interface ServiceAccount {
   client_email: string;
@@ -200,8 +200,35 @@ async function sheetsApiRequest(method: string, endpoint: string, body?: unknown
 // ==================== PUBLIC API ====================
 
 /**
+ * Fetch TC-ID → row number mapping directly from column A of the sheet.
+ * Used as fallback when tests-queue.json is missing (e.g. fresh K8s pod).
+ */
+async function fetchRowMapFromSheet(): Promise<Record<string, number>> {
+  try {
+    const config = loadSheetConfig();
+    const tabName = config.tabName || 'Arkusz1';
+    const response = await sheetsApiRequest('GET', `values/${encodeURIComponent(tabName + '!A:A')}`);
+    const parsed = JSON.parse(response);
+    const values: string[][] = parsed.values || [];
+    const map: Record<string, number> = {};
+    values.forEach((row, i) => {
+      if (row[0] && /^TC-/.test(row[0])) {
+        map[row[0]] = i + 1; // 1-indexed row number
+      }
+    });
+    console.log(`[sheets-api] Fetched rowMap from sheet: ${Object.keys(map).length} entries`);
+    return map;
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.log(`[sheets-api] fetchRowMapFromSheet failed: ${msg}`);
+    return {};
+  }
+}
+
+/**
  * Batch update test results in Google Sheets.
  * Writes columns G (status), H (result text), I (date) for each result.
+ * If rowMap is empty (no tests-queue.json), fetches mapping from the sheet directly.
  */
 export async function batchUpdateSheetResults(
   results: SheetTestResult[],
@@ -209,12 +236,17 @@ export async function batchUpdateSheetResults(
 ): Promise<BatchResult> {
   if (!results || results.length === 0) return { written: 0, errors: 0 };
 
+  // Fallback: fetch rowMap from sheet when tests-queue.json was not available
+  const effectiveRowMap = Object.keys(rowMap).length > 0
+    ? rowMap
+    : await fetchRowMapFromSheet();
+
   const config = loadSheetConfig();
   const tabName = config.tabName || 'Arkusz1';
 
   const data: Array<{ range: string; values: string[][] }> = [];
   for (const result of results) {
-    const row = rowMap[result.code];
+    const row = effectiveRowMap[result.code];
     if (!row) continue;
 
     const status = (result.status || '').toUpperCase();
