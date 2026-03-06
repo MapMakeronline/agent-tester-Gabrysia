@@ -31,7 +31,15 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: {
+        ...devices['Desktop Chrome'],
+        // Software WebGL for headless Docker/K8s (no GPU available in containers)
+        ...(IS_HEADLESS ? {
+          launchOptions: {
+            args: ['--use-gl=swiftshader', '--disable-gpu', '--no-sandbox'],
+          },
+        } : {}),
+      },
     },
   ],
 });

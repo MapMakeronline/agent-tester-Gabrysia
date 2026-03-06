@@ -58,7 +58,9 @@ test.describe('LOGOWANIE', () => {
   });
 
   // TC-LOGIN-006: Rejestracja nowego użytkownika
+  // Skip in CI/K8s — creates real accounts in production DB on every run
   test('TC-LOGIN-006: Rejestracja nowego użytkownika', async ({ page }) => {
+    if (process.env.HEADLESS === '1') test.skip(true, 'Skipped in CI/K8s — creates real DB entries on each run');
     await page.goto(`${BASE_URL}/register`);
     const ts = Date.now().toString().slice(-6);
     const username = `TestUser${ts}`;
@@ -112,7 +114,9 @@ test.describe('LOGOWANIE', () => {
   });
 
   // TC-LOGIN-009: Zmiana hasła użytkownika
+  // Skip in CI/K8s — risk of leaving 'tester' account with wrong password if test fails mid-run
   test('TC-LOGIN-009: Zmiana hasła użytkownika', async ({ page }) => {
+    if (process.env.HEADLESS === '1') test.skip(true, 'Skipped in CI/K8s — risk of account lockout if test fails mid-run');
     // Logowanie jako tester
     await page.goto(`${BASE_URL}/login`);
     await page.getByRole('textbox', { name: /nazwa użytkownika/i }).fill('tester');
