@@ -13,7 +13,7 @@ import * as fs from 'fs';
  */
 const PROJECT = 'TestzWarstwami';
 const TEST_FILES_DIR = process.env.TEST_FILES_DIR
-  || path.resolve(process.env.USERPROFILE || process.env.HOME || '.', 'Desktop', 'do testów');
+  || path.resolve(__dirname, '..', 'test-inputs', 'do testów');
 
 /** Check if a test file exists — returns resolved path or null */
 function resolveTestFile(filePath: string): string | null {

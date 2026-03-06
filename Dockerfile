@@ -11,7 +11,10 @@ RUN npx playwright install chromium
 COPY e2e/playwright.config.ts ./playwright.config.ts
 COPY e2e/ ./e2e/
 
-# 3. Tester: skrypty, config, monitor, lib
+# 3. Pliki testowe (import warstw)
+COPY test-inputs/ ./test-inputs/
+
+# 3b. Tester: skrypty, config, monitor, lib
 COPY scripts/ ./scripts/
 COPY config/error-solutions.json config/known-bugs.json ./config/
 COPY monitor/index.html monitor/favicon.svg ./monitor/
